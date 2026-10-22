@@ -62,6 +62,8 @@ const state = {
   currentPrediction:null, // last goal prediction used by the recovery card
   phase:'task1',          // task1 | adapt | task2 | results | task3 | done
   recoverCooldownUntil:0,
+  sessionCount:1,         // 1-based count of sessions (page loads) on this device;
+                          // restored + incremented by the persistence layer below
   movementProfile:'standard' // directional movement profile — a user PREFERENCE
                              // (Standard | Reduce horizontal | Reduce vertical);
                              // never set by the adaptation engine, only by the user
@@ -325,6 +327,105 @@ function profileMultiplier(action){
   return movementProfile().mult[dc];
 }
 
+/* ---------------- cross-session learning persistence ----------------
+   The learning above used to reset on every page load: one session of
+   data is a demonstration, not learning. The ACCUMULATED statistics
+   now persist in the browser's localStorage (keys prefixed
+   `accessflow.`) so discovery, error rates and goal prediction
+   genuinely improve over several sessions on the same device:
+     PERSISTED:  destStats (visits / presses / excess / difficulty
+                 events per destination), learned edge bumps
+                 (state.weights), per-action-class outcomes
+                 (state.edgeOutcomes — drives the difficulty
+                 multiplier), learned prefix counts, the movement
+                 profile, and the session counter.
+     NOT persisted (deliberately): adaptations such as pinned
+                 shortcuts — every adaptation remains a per-session,
+                 in-the-moment user approval, so a pin is never
+                 silently restored — plus all transient run state
+                 (current task, timers, results table, audit panel).
+   Everything stays ON-DEVICE: localStorage in this browser only,
+   nothing is uploaded anywhere. Every storage access is wrapped in
+   try/catch and probed once: if storage is unavailable (file:// in
+   some browsers, private mode, disabled storage) the app silently
+   falls back to in-memory learning for the session — identical
+   behaviour, just not carried over. "Reset learning" (metrics panel)
+   clears the stored fields and returns the movement profile to
+   Standard; the session counter restarts at 1.                    */
+const LEARNING_KEYS = {
+  stats:'accessflow.destStats', bumps:'accessflow.weights',
+  outcomes:'accessflow.edgeOutcomes', prefixes:'accessflow.prefixCounts',
+  profile:'accessflow.movementProfile', sessions:'accessflow.sessions'
+};
+let _learningStore;   // undefined = not probed yet, null = unavailable
+function learningStore(){
+  if(_learningStore !== undefined) return _learningStore;
+  _learningStore = null;
+  try {
+    const w = (typeof window !== 'undefined') ? window : null;
+    const ls = (w && w.localStorage) || (typeof localStorage !== 'undefined' ? localStorage : null);
+    if(ls){
+      const probe = 'accessflow.__probe';
+      ls.setItem(probe, '1'); ls.removeItem(probe);   // some browsers expose it but throw on use
+      _learningStore = ls;
+    }
+  } catch(e){ _learningStore = null; }
+  return _learningStore;
+}
+function storageGet(key){
+  const ls = learningStore(); if(!ls) return null;
+  try { return ls.getItem(key); } catch(e){ return null; }
+}
+function storageSet(key, value){
+  const ls = learningStore(); if(!ls) return;
+  try { ls.setItem(key, value); } catch(e){ /* quota / privacy — in-memory fallback */ }
+}
+function storageRemove(key){
+  const ls = learningStore(); if(!ls) return;
+  try { ls.removeItem(key); } catch(e){ /* ignore */ }
+}
+/* Field-level (de)serialisation, kept separate from the storage calls
+   so the test suite can round-trip the exact shipped logic against a
+   storage stub. parseLearningField never throws: anything missing,
+   corrupt, or not a plain object restores as the fallback. */
+function serializeLearningField(obj){ return JSON.stringify(obj || {}); }
+function parseLearningField(raw, fallback){
+  if(raw === null || raw === undefined) return fallback;
+  try {
+    const v = JSON.parse(raw);
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : fallback;
+  } catch(e){ return fallback; }
+}
+function saveLearning(){
+  storageSet(LEARNING_KEYS.stats, serializeLearningField(state.destStats));
+  storageSet(LEARNING_KEYS.bumps, serializeLearningField(state.weights));
+  storageSet(LEARNING_KEYS.outcomes, serializeLearningField(state.edgeOutcomes));
+  storageSet(LEARNING_KEYS.prefixes, serializeLearningField(state.prefixCounts));
+  storageSet(LEARNING_KEYS.profile, state.movementProfile);
+}
+function loadLearning(){
+  state.destStats    = parseLearningField(storageGet(LEARNING_KEYS.stats), {});
+  state.weights      = parseLearningField(storageGet(LEARNING_KEYS.bumps), {});
+  state.edgeOutcomes = parseLearningField(storageGet(LEARNING_KEYS.outcomes), {});
+  state.prefixCounts = parseLearningField(storageGet(LEARNING_KEYS.prefixes), {});
+  const prof = storageGet(LEARNING_KEYS.profile);
+  if(prof && MOVEMENT_PROFILES[prof]) state.movementProfile = prof;
+  let n = parseInt(storageGet(LEARNING_KEYS.sessions) || '0', 10);
+  if(!(n > 0)) n = 0;
+  state.sessionCount = n + 1;
+  storageSet(LEARNING_KEYS.sessions, String(state.sessionCount));
+  return state.sessionCount;
+}
+function resetLearning(){
+  for(const k of Object.values(LEARNING_KEYS)) storageRemove(k);
+  state.destStats = {}; state.weights = {}; state.edgeOutcomes = {}; state.prefixCounts = {};
+  state.movementProfile = 'standard';       // profile is cleared back to Standard
+  state.sessionCount = 1;                   // this session counts as Session 1 again
+  storageSet(LEARNING_KEYS.sessions, '1');
+  storageSet(LEARNING_KEYS.profile, 'standard');
+}
+loadLearning();
+
 /* ---------------- graph + Dijkstra ---------------- */
 function buildGraph(){
   const screens = getScreens();
@@ -370,6 +471,7 @@ function bumpWeight(fromKey, action){
   const k = fromKey + '|' + actionClass(action);
   state.weights[k] = (state.weights[k]||0) + 0.6;
   noteEdgeError(action);
+  saveLearning();   // learned bumps are learning — persist them as they happen
 }
 
 /* Pure Dijkstra core over an adjacency map {node: [{to, action, ...}]},

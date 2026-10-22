@@ -209,6 +209,8 @@
       .segbtn:active{ transform:scale(.97); }
       .segbtn.active{ background:var(--amber); border-color:var(--amber); color:var(--amber-ink); }
       .profile-note{ margin:7px 0 0; font-size:12px; color:var(--faint); }
+      .learn-ctl{ margin-top:10px; border-top:1px solid var(--line); padding-top:10px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; }
+      .learn-note{ font-size:12px; color:var(--faint); flex:1 1 220px; }
       .log{
         list-style:none; margin:0; padding:0; max-height:230px; overflow:auto; font-size:13px;
       }

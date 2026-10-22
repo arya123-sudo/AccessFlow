@@ -115,6 +115,10 @@
               </div>
               <p class="profile-note">Moves in the direction you find harder cost ×2.0 in the weighted effort model, so routing steers around them. Press counts never change.</p>
             </div>
+            <div class="learn-ctl">
+              <button class="btn ghost small" id="resetLearningBtn" type="button">Reset learning</button>
+              <span class="learn-note">Clears the accumulated run statistics, learned edge weights and movement profile (back to Standard) stored on this device. Adaptations stay per-session and are not stored.</span>
+            </div>
           </div>
 
           <div class="panel">
@@ -189,7 +193,7 @@
       </section>
 
       <footer>
-        AccessFlow is a Fire TV experience prototype built for the Amazon Build, Ship, Shape Developer Hackathon (Fire TV track). The TV shell is a simulator — but the weighted-graph engine, Dijkstra path-finding, difficulty detection, adaptation logic and all metrics on this page are real, computed live from your interaction. Nothing is stored; closing the page resets the demo.
+        AccessFlow is a Fire TV experience prototype built for the Amazon Build, Ship, Shape Developer Hackathon (Fire TV track). The TV shell is a simulator — but the weighted-graph engine, Dijkstra path-finding, difficulty detection, adaptation logic and all metrics on this page are real, computed live from your interaction. Your learning data (run statistics, learned weights, movement profile) is stored only in this browser on this device and accumulates across visits; adaptations are approved per session and never silently restored. Clear the stored learning any time with <b>Reset learning</b> in the Live metrics panel.
       </footer>
     </div>
 
