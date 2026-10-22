@@ -45,3 +45,8 @@ One day, ten build stages. Every stage is a real commit on `main`; nothing is ba
 
 ## v1 — Core prototype
 - Fire TV experience simulator with a real weighted navigation graph (38 nodes, 168 edges), live Dijkstra, difficulty detection (overshoots, reversals, backtracks, hesitations), approval-gated adaptation, measured before/after results (8 → 2 presses in the demonstration run).
+
+## v11 — Black / red / yellow identity (final design direction)
+- The blue identity is gone: black base (#050505/#0b0b0f), red (#e50914) for primary actions/active states, yellow (#ffc61a) for the focus ring, key figures and badges.
+- Composition unchanged from v10: Home + Search live at the top; Subtitles and all content below; tiles are black with red/yellow accents; hero and poster art shifted to ember/gold/charcoal.
+- Colours, gradients, borders and shadows only — no layout, logic or data changes. Graph still 44 nodes / 206 edges; canonical flow re-verified (Task 1 = 8 presses → Task 2 = 2). All gallery screenshots re-shot.
