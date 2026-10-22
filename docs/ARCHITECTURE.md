@@ -10,7 +10,7 @@ No adaptation is ever applied without the user's explicit approval, and every ap
 ## The navigation graph (`js/engine.js`)
 - **Node** = a `(screen, focused item)` pair — e.g. `(settings, accessibility)`, `(accessibility, subtitles)`.
 - **Edge** = one remote action: a D-pad move, **Select**, **Back**, or **Home**. Each edge carries its from/to items so costs can use real geometry.
-- **Shortest path** = Dijkstra's algorithm over the current weighted graph, computed live (the pure core is `dijkstraCore(adj, start, target, weightFn)`; the app-facing `dijkstra()` builds the live graph and plugs in the effort model). The demo shows the optimal press count and route for the active task at all times (the built demo measured 38 nodes / 168 edges).
+- **Shortest path** = Dijkstra's algorithm over the current weighted graph, computed live (the pure core is `dijkstraCore(adj, start, target, weightFn)`; the app-facing `dijkstra()` builds the live graph and plugs in the effort model). The demo shows the optimal press count and route for the active task at all times (the built demo measures 44 nodes / 206 edges — the graph grew when Shivaprasad's six-title catalog was appended to the Movies screen).
 
 ## The effort model (Fitts's law + learned difficulty)
 Unweighted cost is always exactly **1 per press**, so "optimal presses" stays an honest press count. The *weighted* cost of an edge is:

@@ -28,6 +28,9 @@ Real captures from actual runs of the prototype (see `docs/DEMO_GUIDE.md` for th
 **Results + Adaptations audit panel — every applied change, its evidence, and Undo**
 ![Adaptations panel](screenshots/adaptations-panel.png)
 
+**Movies — Shivaprasad's six-title catalog, live in the shipped demo**
+![Movies catalog](screenshots/movies-catalog.png)
+
 **Fire TV Home — baseline navigation**
 ![Home](screenshots/home.png)
 
@@ -88,7 +91,7 @@ CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 
 ## Repository layout — two builds, one project
 - **Shipped build (this demo + video):** the web engine at the repo root (`index.html`, `css/`, `js/`) and the Fire TV app in `fire-tv/` (package `com.arya.accessflow`, with prebuilt APK).
-- **React Native scaffold:** `android/`, `ios/` and `.bundle/` hold the platform folders from teammate Shivaprasad's parallel RN prototype (package `com.accessflowapp`), imported so the combined team project lives in one repo. The concepts adopted from it (movement profiles, guided navigation, path-effort tally) are implemented in the shipped web engine; his RN app remains canonical at https://github.com/shivaprasad938/accessflowai.
+- **React Native scaffold:** `android/`, `ios/` and `.bundle/` hold the platform folders from teammate Shivaprasad's parallel RN prototype (package `com.accessflowapp`), imported so the combined team project lives in one repo. The concepts adopted from it (movement profiles, guided navigation, path-effort tally) are implemented in the shipped web engine, and his six-title movie catalog now appears as real tiles in the demo's Movies screen; his full RN project (all 57 files, including `App.tsx`, `src/navigation/` and his test) is imported in this repo, with his README preserved as `RN_PROTOTYPE_README.md`; his repo remains at https://github.com/shivaprasad938/accessflowai.
 
 ## Fire TV app
 The same engine ships as a native Fire OS app — a thin WebView shell (package `com.arya.accessflow`) bundling this exact web build, driven by real Fire TV remote key events. Source: [`fire-tv/`](fire-tv/) · Build & sideload guide: [docs/INSTALL_FIRE_TV.md](docs/INSTALL_FIRE_TV.md) (includes honest status notes on device-farm verification).

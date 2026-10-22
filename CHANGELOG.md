@@ -1,5 +1,9 @@
 # AccessFlow — Build Log (2026-10-22, hackathon day)
-One day, six build stages. Every stage is a real commit on `main`; nothing is backdated.
+One day, seven build stages. Every stage is a real commit on `main`; nothing is backdated.
+
+## v7 — Full prototype consolidation (per team decision)
+- Shivaprasad's complete React Native project imported: root project files (`App.tsx`, `index.js`, `src/navigation/`, `__tests__/`, package + Metro/Babel/Jest/TS configs, Gemfile) — his repo is now present in full (57/57 files, hashes verified); his README is preserved as `RN_PROTOTYPE_README.md`.
+- His six-title movie catalog (The Last Horizon, City of Dreams, Beyond the Stars, Laugh Out Loud, Hidden Truth, Family Time — with his genre/duration metadata) now appears as real, focusable tiles in the shipped demo's Movies screen, with an on-screen credit line. Graph grew 38 → 44 nodes, 168 → 206 edges; canonical demo flow re-verified unchanged (Task 1: 8 presses → Task 2: 2 presses; 20/20 tests).
 
 ## v6 — React Native platform scaffold imported (per team decision)
 - The `android/`, `ios/` and `.bundle/` folders from Shivaprasad's React Native prototype were imported into this repo at his team's request, so the combined project carries both builds side by side: the shipped web engine + Fire TV wrapper (`fire-tv/`), and his RN platform scaffold. His RN app itself (package `com.accessflowapp`) remains canonical in his repo; the features adopted from it live in the web engine (see v3/v5).
