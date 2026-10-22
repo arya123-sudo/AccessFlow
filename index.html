@@ -106,6 +106,15 @@
               <div class="stat"><div class="n" id="mOpt">–</div><div class="l">Optimal left</div></div>
             </div>
             <div class="effort" id="engineLine">Graph engine: building…</div>
+            <div class="profile-ctl">
+              <span class="profile-label">Movement profile <span class="sub">— your preference, set by you (not an adaptation)</span></span>
+              <div class="seg" id="profileSeg" role="group" aria-label="Movement profile">
+                <button type="button" class="segbtn active" data-profile="standard">Standard</button>
+                <button type="button" class="segbtn" data-profile="reduceH">Reduce horizontal effort</button>
+                <button type="button" class="segbtn" data-profile="reduceV">Reduce vertical effort</button>
+              </div>
+              <p class="profile-note">Moves in the direction you find harder cost ×2.0 in the weighted effort model, so routing steers around them. Press counts never change.</p>
+            </div>
           </div>
 
           <div class="panel">

@@ -168,6 +168,102 @@ test('isReversal: only an immediate opposite move without an intervening select 
   assert.equal(ev(`isReversal(null, 'left', false, ${JSON.stringify(OPP)})`), false);
 });
 
+test('movement profile: x2.0 applies to weighted cost for the disfavoured direction only', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    const saved = { weights: state.weights, edgeOutcomes: state.edgeOutcomes,
+                    large: state.adapted.large, profile: state.movementProfile };
+    state.weights = {}; state.edgeOutcomes = {}; state.adapted.large = false;
+    const it = (x, y) => ({ x:x, y:y });
+    const eR = { action:{kind:'move', dir:'right'}, fromItem:it(0,0), toItem:it(1,0) };
+    const eD = { action:{kind:'move', dir:'down'},  fromItem:it(0,0), toItem:it(0,1) };
+    const eS = { action:{kind:'select'},            fromItem:it(0,0), toItem:it(0,0) };
+    const w = (e) => edgeWeight('n', e.action, true, e);
+    const r = {};
+    setMovementProfile('standard');
+    r.std = { right: w(eR), down: w(eD), select: w(eS),
+              unweighted: edgeWeight('n', eR.action, false, eR) };
+    setMovementProfile('reduceH');
+    r.redH = { right: w(eR), down: w(eD), select: w(eS),
+               unweighted: edgeWeight('n', eR.action, false, eR),
+               multR: profileMultiplier(eR.action), multD: profileMultiplier(eD.action),
+               multS: profileMultiplier(eS.action) };
+    setMovementProfile('reduceV');
+    r.redV = { right: w(eR), down: w(eD) };
+    setMovementProfile('standard');
+    state.weights = saved.weights; state.edgeOutcomes = saved.edgeOutcomes;
+    state.adapted.large = saved.large; state.movementProfile = saved.profile;
+    return r;
+  })()`);
+  // clean state: each edge is (1 + log2(1/1 + 1)) x 1 = 2 before any profile multiplier
+  assert.equal(out.std.right, 2);
+  assert.equal(out.std.down, 2);
+  assert.equal(out.std.select, 2);
+  assert.equal(out.redH.right, 4, 'horizontal move doubles under Reduce horizontal effort');
+  assert.equal(out.redH.down, 2, 'vertical move is untouched under Reduce horizontal effort');
+  assert.equal(out.redH.select, 2, 'select is direction-neutral and never multiplied');
+  assert.equal(out.redH.multR, 2);
+  assert.equal(out.redH.multD, 1);
+  assert.equal(out.redH.multS, 1);
+  assert.equal(out.redV.right, 2, 'horizontal move is untouched under Reduce vertical effort');
+  assert.equal(out.redV.down, 4, 'vertical move doubles under Reduce vertical effort');
+  assert.equal(out.std.unweighted, 1);
+  assert.equal(out.redH.unweighted, 1, 'unweighted press cost stays exactly 1 under any profile');
+});
+
+test('movement profile: Dijkstra routing steers off the disfavoured axis when an alternate route exists', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    const saved = { weights: state.weights, edgeOutcomes: state.edgeOutcomes,
+                    large: state.adapted.large, profile: state.movementProfile };
+    state.weights = {}; state.edgeOutcomes = {}; state.adapted.large = false;
+    // Two 2-press routes S -> T with EQUAL press counts:
+    //   horizontal-heavy: S -right-> H -right-> T
+    //   vertical-heavy:   S -down--> V -down--> T
+    const it = (x, y) => ({ x:x, y:y });
+    const adj = {
+      S: [ {to:'H', action:{kind:'move', dir:'right'}, fromItem:it(0,0), toItem:it(1,0)},
+           {to:'V', action:{kind:'move', dir:'down'},  fromItem:it(0,0), toItem:it(0,1)} ],
+      H: [ {to:'T', action:{kind:'move', dir:'right'}, fromItem:it(1,0), toItem:it(2,0)} ],
+      V: [ {to:'T', action:{kind:'move', dir:'down'},  fromItem:it(0,1), toItem:it(0,2)} ],
+      T: []
+    };
+    const wfn = (u, e) => edgeWeight(u, e.action, true, e);
+    const route = r => r.path.map(s => s.from + '>' + s.to).join(',');;
+    setMovementProfile('standard');
+    const std = dijkstraCore(adj, 'S', 'T', wfn);
+    setMovementProfile('reduceH');
+    const redH = dijkstraCore(adj, 'S', 'T', wfn);
+    setMovementProfile('reduceV');
+    const redV = dijkstraCore(adj, 'S', 'T', wfn);
+    // Live graph: the profile raises the WEIGHTED Home->Subtitles effort
+    // while the unweighted press optimum does not move.
+    setMovementProfile('standard');
+    const liveStd = dijkstra('home:' + defaultFocus('home'), 'subtitles:sub_toggle', true).dist;
+    const livePress = dijkstra('home:' + defaultFocus('home'), 'subtitles:sub_toggle', false).dist;
+    setMovementProfile('reduceH');
+    const liveRedH = dijkstra('home:' + defaultFocus('home'), 'subtitles:sub_toggle', true).dist;
+    const livePressH = dijkstra('home:' + defaultFocus('home'), 'subtitles:sub_toggle', false).dist;
+    setMovementProfile('standard');
+    state.weights = saved.weights; state.edgeOutcomes = saved.edgeOutcomes;
+    state.adapted.large = saved.large; state.movementProfile = saved.profile;
+    return { stdDist: std.dist, stdSteps: std.path.length,
+             redHDist: redH.dist, redHRoute: route(redH),
+             redVDist: redV.dist, redVRoute: route(redV),
+             liveStd, liveRedH, livePress, livePressH };
+  })()`);
+  assert.equal(out.stdDist, 4, 'under Standard both routes cost the same (2 edges x 2.0) — either may win');
+  assert.equal(out.stdSteps, 2, 'both routes have equal press counts');
+  assert.equal(out.redHDist, 4, 'the vertical-heavy route still costs 4 under Reduce horizontal');
+  assert.equal(out.redHRoute, 'S>V,V>T', 'Reduce horizontal must pick the vertical-heavy route');
+  assert.equal(out.redVDist, 4, 'the horizontal-heavy route still costs 4 under Reduce vertical');
+  assert.equal(out.redVRoute, 'S>H,H>T', 'Reduce vertical must pick the horizontal-heavy route');
+  assert.ok(out.liveRedH > out.liveStd,
+    `weighted live effort must rise under Reduce horizontal (${out.liveRedH} > ${out.liveStd})`);
+  assert.equal(out.livePress, out.livePressH, 'unweighted press optimum is identical under any profile');
+  assert.equal(out.livePress + 1, 6, 'the known Home->Subtitles press optimum is unchanged');
+});
+
 test('graph integrity: every edge target exists and pinning adds a Home shortcut tile', () => {
   const ev = loadEngine();
   const out = ev(`(function(){

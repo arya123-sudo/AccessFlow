@@ -79,11 +79,18 @@ function renderMetrics(){
   const nodes = Object.keys(adj).length;
   const edges = Object.values(adj).reduce((a,v)=>a+v.length,0);
   const errPct = Math.round(userErrorRate() * 100);
+  const prof = movementProfile();
+  const profText = prof.id==='standard'
+    ? 'Movement profile: <b>Standard</b> \u00B7 all moves \u00D71.0'
+    : 'Movement profile: <b>' + prof.name + '</b> \u00B7 ' +
+      (prof.id==='reduceH' ? 'horizontal (left/right) moves \u00D72.0' : 'vertical (up/down) moves \u00D72.0') +
+      ' in the effort model';
   $('engineLine').innerHTML = 'Graph engine: <b>' + nodes + ' nodes · ' + edges + ' edges</b> · Dijkstra live · ' +
     Object.keys(state.weights).length + ' learned weight' + (Object.keys(state.weights).length===1?'':'s') +
     '<br>Effort model: weight = (1 + Fitts log\u2082(d/size + 1)) \u00D7 (1 + your error rate) + learned bumps \u00B7 your error rate so far: <b>' +
     errPct + '%</b> \u00B7 target sizes \u00D7' + (state.adapted.large ? '1.5 (enlarged mode)' : '1.0') +
-    ' \u00B7 optimal-press figures always use a pure count of 1 per press';
+    ' \u00B7 optimal-press figures always use a pure count of 1 per press' +
+    '<br>' + profText + ' \u00B7 a preference you set \u2014 it changes weighted cost only, never press counts';
 }
 
 function updateAll(){ renderTV(); renderMetrics(); renderPath(); refreshRecoverText(); renderAdaptations(); }
@@ -437,7 +444,10 @@ function nextStepInfo(goal){
   if(!g) return null;
   const cur = nodeKey();
   if(cur === g.node) return { final:true, goal:g, text:'You are on the target — one OK press finishes it.' };
-  const res = dijkstra(cur, g.node, false);
+  /* Recovery routing uses the WEIGHTED model (Fitts + learned bumps +
+     the user's movement profile), so the guided next step genuinely
+     steers around the direction the user finds hardest. */
+  const res = dijkstra(cur, g.node, true);
   if(!res.path.length) return null;
   const st = res.path[0];
   if(st.action.kind==='move') return { step:st, goal:g, text:'Next step: move ' + ARROWS[st.action.dir] + ' to “' + itemLabel(st.to.split(':')[0], st.to.split(':')[1]) + '”.' };
@@ -665,6 +675,24 @@ $('recoverDismiss').addEventListener('click', ()=>{
   logEvent('Recovery dismissed — you kept control. It can return if the struggle continues.', 'guide');
 });
 $('restartBtn').addEventListener('click', ()=>location.reload());
+
+/* Movement profile control (Live metrics panel): a user PREFERENCE.
+   Clicking a segment only reprices directions in the weighted effort
+   model; it is logged to the event log as a preference change and is
+   deliberately NOT recorded in the adaptations audit panel (that
+   trail is reserved for AccessFlow-proposed, user-approved changes). */
+function applyMovementProfile(id){
+  const before = state.movementProfile;
+  const prof = setMovementProfile(id);
+  document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
+    b.classList.toggle('active', b.getAttribute('data-profile')===prof.id));
+  if(before !== prof.id)
+    logEvent('Preference changed \u2014 movement profile: ' + prof.name + '. ' + prof.blurb +
+             ' Weighted routing now accounts for it; press counts are unchanged.', 'guide');
+  updateAll();
+}
+document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
+  b.addEventListener('click', ()=>applyMovementProfile(b.getAttribute('data-profile'))));
 
 /* idle watcher: hesitation-prone stillness + recovery offer */
 setInterval(()=>{

@@ -16,7 +16,7 @@ No adaptation is ever applied without the user's explicit approval, and every ap
 Unweighted cost is always exactly **1 per press**, so "optimal presses" stays an honest press count. The *weighted* cost of an edge is:
 
 ```
-weight = ( PRESS_BASE + fitts ) × difficultyMultiplier + learnedBump
+weight = ( ( PRESS_BASE + fitts ) × difficultyMultiplier + learnedBump ) × profileMultiplier
 fitts  = log2( distanceSteps / targetSize + 1 )        (Fitts's law, Shannon form)
 ```
 
@@ -24,8 +24,12 @@ fitts  = log2( distanceSteps / targetSize + 1 )        (Fitts's law, Shannon for
 - **targetSize** — a per-item size factor: movie/show posters `1.35`, pinned shortcut tiles `1.3`, full-width list rows `×1.15`, standard grid tiles `1.0`. **Enlarged-focus mode multiplies every size by 1.5**, which measurably lowers the Fitts component of every edge — this is computed, not cosmetic: the test suite asserts that a move edge costs less with enlarged mode on.
 - **difficultyMultiplier** — `1 + this user's error rate` for that action class (`move:left`, `move:right`, `select`, …), where error rate = difficulty events ÷ traversals, both counted live (`noteTraversal` / `noteEdgeError` in `state.edgeOutcomes`). Capped at `1.9`.
 - **learnedBump** — the original additive re-weighting: `+0.6` on the specific edge each time a difficulty event occurs on it (`state.weights`).
+- **profileMultiplier** — the user's directional movement profile (next section): `×2.0` on move edges in the disfavoured direction, `×1.0` everywhere else (Select/Back/Home are direction-neutral and never multiplied).
 
-The metrics panel displays the model honestly, including the user's current measured error rate and the active target-size factor.
+The metrics panel displays the model honestly, including the user's current measured error rate, the active target-size factor, and the active movement profile with its multiplier.
+
+### Directional movement profiles (user preference)
+A movement profile is a **preference the user sets**, adopted from a teammate's parallel prototype — it is *not* an adaptation: AccessFlow never proposes or changes it, and it never appears in the adaptations audit trail. The three profiles are **Standard** (all moves ×1.0), **Reduce horizontal effort** (left/right moves ×2.0 in the weighted model), and **Reduce vertical effort** (up/down moves ×2.0), held in `state.movementProfile` and applied by `profileMultiplier()` inside `edgeWeight()` — weighted cost only. Unweighted cost stays exactly 1 per press under every profile, so press counts and all "optimal presses" figures are untouched. Because the weighted Dijkstra is what produces the panel's weighted-effort figure and the recovery card's next step, routing genuinely steers off the disfavoured axis when an alternate route exists (the test suite proves this on a two-route graph with equal press counts, where only the profile can break the tie). The control lives in the **Live metrics panel** — deliberately not as a row in the TV's Accessibility list, so the navigation graph and the verified demo routes are unchanged — and changing it writes a "Preference changed" line to the detection/event log.
 
 ## Difficulty detection (`js/app.js`)
 Every press is logged with a timestamp and classified:
@@ -68,7 +72,7 @@ Probabilities are the raw scores normalized. The recovery card shows the predict
 Each task run records presses, errors, backtracks, reversals, hesitations, and elapsed time, plus its destination and the optimal press count at run start. The results panel compares the baseline run against the adapted run using **only measured values from the actual runs** — no hard-coded results.
 
 ## Tests
-`tests/engine.test.js` (Node's built-in `node:test`, no dependencies) evaluates the shipped `js/engine.js` unchanged in a `vm` context with a minimal DOM stub, and exercises the real production functions: `dijkstraCore` on a hand-built graph with a known shortest path, the live graph's known Home→Subtitles optimum, Fitts monotonicity and the enlarged-mode cost drop, the difficulty multiplier, `combineWeight`, `rankShortcutCandidates` on synthetic visit data (including the case where a movie beats Subtitles), `predictGoal`, and `isReversal`. CI (`.github/workflows/ci.yml`) runs syntax checks plus `node --test` on every push.
+`tests/engine.test.js` (Node's built-in `node:test`, no dependencies) evaluates the shipped `js/engine.js` unchanged in a `vm` context with a minimal DOM stub, and exercises the real production functions: `dijkstraCore` on a hand-built graph with a known shortest path, the live graph's known Home→Subtitles optimum, Fitts monotonicity and the enlarged-mode cost drop, the difficulty multiplier, `combineWeight`, `rankShortcutCandidates` on synthetic visit data (including the case where a movie beats Subtitles), `predictGoal`, `isReversal`, and the movement-profile multiplier (direction-only ×2.0, unweighted cost untouched, and profile-steered Dijkstra routing on a two-route graph). CI (`.github/workflows/ci.yml`) runs syntax checks plus `node --test` on every push.
 
 ## Scope / honesty note
 This repository is a Fire TV *experience prototype*: a 10-foot UI simulator that runs the real engine end-to-end. The graph, Dijkstra optimizer, effort model, discovery, prediction, detection, and metrics are production-logic code; the roadmap item is packaging the same engine as a native Fire TV app with per-profile ability models.

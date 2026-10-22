@@ -198,6 +198,17 @@
       .chip.final{ background:var(--amber); border-color:var(--amber); color:var(--amber-ink); }
       .effort{ font-size:13px; color:var(--muted); margin-top:8px; }
       .effort b{ color:var(--ink); }
+      .profile-ctl{ margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+      .profile-label{ font-size:13px; font-weight:700; color:var(--ink); }
+      .profile-label .sub{ color:var(--faint); font-weight:500; font-size:12px; }
+      .seg{ display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+      .segbtn{
+        appearance:none; border:1px solid var(--line); background:var(--panel2); color:var(--muted);
+        border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; min-height:34px;
+      }
+      .segbtn:active{ transform:scale(.97); }
+      .segbtn.active{ background:var(--amber); border-color:var(--amber); color:var(--amber-ink); }
+      .profile-note{ margin:7px 0 0; font-size:12px; color:var(--faint); }
       .log{
         list-style:none; margin:0; padding:0; max-height:230px; overflow:auto; font-size:13px;
       }

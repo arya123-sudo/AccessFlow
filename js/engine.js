@@ -61,7 +61,10 @@ const state = {
   pendingSuggestion:null, // data behind the currently displayed suggestion card
   currentPrediction:null, // last goal prediction used by the recovery card
   phase:'task1',          // task1 | adapt | task2 | results | task3 | done
-  recoverCooldownUntil:0
+  recoverCooldownUntil:0,
+  movementProfile:'standard' // directional movement profile — a user PREFERENCE
+                             // (Standard | Reduce horizontal | Reduce vertical);
+                             // never set by the adaptation engine, only by the user
 };
 
 let run = null;           // active run record
@@ -217,8 +220,12 @@ function neighborFor(items, item, dir){
      from traversals vs difficulty events.
    - learnedBump: additive weight added to a specific edge whenever a
      difficulty event happens on it (the original re-weighting behaviour).
+   - profileMultiplier: the user's directional movement profile (below)
+     multiplies the whole weighted cost of a move edge: x2.0 for moves in
+     the direction the user asked to avoid, x1.0 otherwise. It lives ONLY
+     in this weighted model.
    Unweighted cost is always exactly 1 per press, so "optimal presses"
-   stays a pure, honest press count.                                        */
+   stays a pure, honest press count — profiles never change counts.       */
 const PRESS_BASE = 1;
 
 function itemSizeFactor(item){
@@ -276,6 +283,48 @@ function userErrorRate(){
   return t ? e / t : 0;
 }
 
+/* ---------------- directional movement profiles ----------------
+   A USER PREFERENCE (adopted from a teammate's prototype direction),
+   not an auto-adaptation: the user declares which movement direction
+   costs them the most effort, and the weighted effort model prices
+   moves in that direction at PROFILE_AVOID_MULT times their normal
+   weighted cost, so effort-based Dijkstra routing (the weighted
+   "effort" figure and the recovery card's next step) steers toward
+   the other axis when an alternate route exists. Select / Back / Home
+   are direction-neutral and never multiplied. The multiplier applies
+   ONLY to weighted cost — unweighted press counts and every
+   "optimal presses" figure are exactly as before. Changing the
+   profile is the user's own settings change: it is written to the
+   event log as a preference and never enters the adaptations audit
+   trail, and it never triggers a suggestion.                        */
+const PROFILE_AVOID_MULT = 2.0;
+const MOVEMENT_PROFILES = {
+  standard: { id:'standard', name:'Standard',
+              blurb:'All directions cost the same.', mult:{ h:1, v:1 } },
+  reduceH:  { id:'reduceH', name:'Reduce horizontal effort',
+              blurb:'Left / right moves cost \u00D72.0 in the effort model.', mult:{ h:PROFILE_AVOID_MULT, v:1 } },
+  reduceV:  { id:'reduceV', name:'Reduce vertical effort',
+              blurb:'Up / down moves cost \u00D72.0 in the effort model.', mult:{ h:1, v:PROFILE_AVOID_MULT } }
+};
+function movementProfile(){
+  return MOVEMENT_PROFILES[state.movementProfile] || MOVEMENT_PROFILES.standard;
+}
+function setMovementProfile(id){
+  if(MOVEMENT_PROFILES[id]) state.movementProfile = id;
+  return movementProfile();
+}
+/* 'h' for left/right moves, 'v' for up/down moves, null for
+   direction-neutral actions (select, back, home). */
+function directionClass(action){
+  if(!action || action.kind !== 'move') return null;
+  return (action.dir === 'left' || action.dir === 'right') ? 'h' : 'v';
+}
+function profileMultiplier(action){
+  const dc = directionClass(action);
+  if(!dc) return 1;
+  return movementProfile().mult[dc];
+}
+
 /* ---------------- graph + Dijkstra ---------------- */
 function buildGraph(){
   const screens = getScreens();
@@ -315,7 +364,7 @@ function buildGraph(){
 function edgeWeight(from, action, weighted, edge){
   if(!weighted) return 1;
   const learned = state.weights[from + '|' + actionClass(action)] || 0;
-  return combineWeight(fittsForEdge(edge), difficultyMultiplier(action), learned);
+  return combineWeight(fittsForEdge(edge), difficultyMultiplier(action), learned) * profileMultiplier(action);
 }
 function bumpWeight(fromKey, action){
   const k = fromKey + '|' + actionClass(action);
