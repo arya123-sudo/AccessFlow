@@ -135,6 +135,7 @@ docs/DEMO_GUIDE.md    How to run the demo and what to try
 JavaScript, HTML/CSS, weighted graph + Dijkstra shortest path, real-time interaction analytics. Prototype experience for Fire TV.
 
 ## Team & related work
+- **Poster photography** — the demo catalog's photographic key art is sourced from Pexels (free license); per-image credits in `assets/posters/CREDITS.md`.
 - **Arya Yaligar** — main build: engine, demo, Fire TV app, tests, video, submission.
 - **Shivaprasad** ([@shivaprasad938](https://github.com/shivaprasad938)) — parallel React Native exploration of the same idea: [accessflowai](https://github.com/shivaprasad938/accessflowai). Its directional movement-cost profiles (e.g. "Reduced Horizontal Movement") inspired the **Movement profile** preference adopted into this build's effort model, and its guided route walkthrough ("Guided Navigation") and estimated-effort analytics inspired the **Guide me** walkthrough and the **live path-effort tally** adopted here.
 
