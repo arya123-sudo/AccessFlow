@@ -29,17 +29,17 @@ const ICONS = {
 };
 
 const MOVIES = [
-  {id:'riverrun',    title:'River Run',      meta:'Adventure · 2024 · 1h 52m', hue:197},
+  {id:'riverrun',    title:'River Run',      meta:'Adventure · 2024 · 1h 52m', hue:8},
   {id:'desertlight', title:'Desert Light',   meta:'Drama · 2023 · 2h 05m',     hue:33},
-  {id:'nightcircuit',title:'Night Circuit',  meta:'Thriller · 2024 · 1h 41m',  hue:262},
-  {id:'harborsky',   title:'Harbor Sky',     meta:'Romance · 2022 · 1h 58m',   hue:214},
+  {id:'nightcircuit',title:'Night Circuit',  meta:'Thriller · 2024 · 1h 41m',  hue:350},
+  {id:'harborsky',   title:'Harbor Sky',     meta:'Romance · 2022 · 1h 58m',   hue:24},
   {id:'emberfalls',  title:'Ember Falls',    meta:'Fantasy · 2024 · 2h 12m',   hue:14},
-  {id:'lastsignal',  title:'The Last Signal',meta:'Sci-Fi · 2023 · 2h 01m',    hue:158}
+  {id:'lastsignal',  title:'The Last Signal',meta:'Sci-Fi · 2023 · 2h 01m',    hue:42}
 ];
 const SHOWS = [
-  {id:'signalhill', title:'Signal Hill', meta:'Drama series · 2 seasons',    hue:122},
-  {id:'theorchard',  title:'The Orchard',  meta:'Comedy series · 3 seasons',   hue:84},
-  {id:'northline',   title:'North Line',   meta:'Documentary · 1 season',      hue:200}
+  {id:'signalhill', title:'Signal Hill', meta:'Drama series · 2 seasons',    hue:36},
+  {id:'theorchard',  title:'The Orchard',  meta:'Comedy series · 3 seasons',   hue:48},
+  {id:'northline',   title:'North Line',   meta:'Documentary · 1 season',      hue:18}
 ];
 
 /* Movie catalog contributed by Shivaprasad from his AccessFlow prototype:
@@ -47,12 +47,12 @@ const SHOWS = [
    Appended after the original Movies tiles so existing focus positions,
    graph routes and demo tasks remain unchanged. */
 const SHIVAPRASAD_CATALOG = [
-  {id:'the-last-horizon', title:'The Last Horizon', meta:'Adventure • 2h 10m', hue:211},
+  {id:'the-last-horizon', title:'The Last Horizon', meta:'Adventure • 2h 10m', hue:16},
   {id:'city-of-dreams',   title:'City of Dreams',   meta:'Drama • 1h 45m',     hue:28},
-  {id:'beyond-the-stars', title:'Beyond the Stars', meta:'Sci-Fi • 2h 05m',    hue:174},
+  {id:'beyond-the-stars', title:'Beyond the Stars', meta:'Sci-Fi • 2h 05m',    hue:355},
   {id:'laugh-out-loud',   title:'Laugh Out Loud',   meta:'Comedy • 1h 30m',    hue:45},
   {id:'hidden-truth',     title:'Hidden Truth',     meta:'Thriller • 1h 55m',  hue:350},
-  {id:'family-time',      title:'Family Time',      meta:'Family • 1h 40m',    hue:96}
+  {id:'family-time',      title:'Family Time',      meta:'Family • 1h 40m',    hue:40}
 ];
 
 const state = {
@@ -760,8 +760,8 @@ function detailMetaParts(d){
   const quality = (hashTitle(d.title) % 4 === 0) ? 'HD' : '4K';
   return { genre:genre, duration:duration, year:year, match:matchForTitle(d.title), cert:cert, quality:quality };
 }
-/* Layered CSS-art scenery for a title: a warm glow, a cool wash and a
-   deep hue slope — no images, just gradients in the title's hue. */
+/* Layered CSS-art scenery for a title: an ember glow, a gold wash
+   and a deep hue slope — no images, just gradients in the title's hue. */
 function posterArtStyle(m){
   const h = m.hue, h2 = (m.hue + 45) % 360;
   return 'background:' +
@@ -797,9 +797,9 @@ function titleById(id){
    or add a node. */
 function chipsHTML(){
   const chips = [
-    {label:'AccessFlow Picks', dot:'#55D6BE', on:true},
-    {label:'Top Selling Movies', dot:'#7fb2ff'},
-    {label:'Popular Movies and Shows', dot:'#ffb86b'},
+    {label:'AccessFlow Picks', dot:'#e50914', on:true},
+    {label:'Top Selling Movies', dot:'#ffc61a'},
+    {label:'Popular Movies and Shows', dot:'#ff7847'},
     {label:'Trending', dot:'#ff8a7a'}
   ];
   let h = '<div class="chip-row" aria-hidden="true">';
@@ -851,7 +851,7 @@ function heroHTML(){
   const mp = detailMetaParts(m);
   const h = m.hue, h2 = (m.hue + 45) % 360;
   const backdrop =
-    'linear-gradient(100deg, rgba(11,16,32,.94) 24%, rgba(11,16,32,.58) 56%, rgba(11,16,32,.10) 100%),' +
+    'linear-gradient(100deg, rgba(5,5,5,.94) 24%, rgba(5,5,5,.58) 56%, rgba(5,5,5,.10) 100%),' +
     'radial-gradient(90% 130% at 82% 0%, hsla(' + h2 + ',85%,68%,.80), rgba(0,0,0,0) 55%),' +
     'radial-gradient(70% 90% at 8% 108%, hsla(' + h + ',80%,55%,.55), rgba(0,0,0,0) 60%),' +
     'linear-gradient(150deg, hsl(' + h + ',64%,44%) 0%, hsl(' + h + ',60%,27%) 58%, hsl(' + h2 + ',64%,12%) 100%)';
@@ -876,7 +876,7 @@ function heroHTML(){
 function backdropStyle(d){
   const h = d.hue, h2 = (d.hue + 45) % 360;
   return 'background:' +
-    'linear-gradient(180deg, rgba(11,16,32,.16) 0%, rgba(11,16,32,.04) 38%, rgba(11,16,32,.86) 86%, #0B1020 100%),' +
+    'linear-gradient(180deg, rgba(5,5,5,.16) 0%, rgba(5,5,5,.04) 38%, rgba(5,5,5,.86) 86%, #0b0b0f 100%),' +
     'radial-gradient(85% 120% at 80% 4%, hsla(' + h2 + ',85%,67%,.85), rgba(0,0,0,0) 55%),' +
     'radial-gradient(75% 95% at 10% 22%, hsla(' + h + ',78%,55%,.55), rgba(0,0,0,0) 62%),' +
     'linear-gradient(155deg, hsl(' + h + ',66%,45%) 0%, hsl(' + h + ',60%,27%) 55%, hsl(' + h2 + ',64%,12%) 100%)';
@@ -885,7 +885,7 @@ function castHTML(d){
   let h = '<div class="detail-sec" aria-hidden="true"><div class="detail-sec-title">Cast</div><div class="cast-row">';
   for(const name of castFor(d)){
     const ch = hashTitle(d.title + ':' + name);
-    h += '<div class="cast"><div class="avatar" style="background:linear-gradient(140deg,hsl(' + (ch % 360) + ',58%,44%),hsl(' + ((ch + 50) % 360) + ',60%,24%))">' +
+    h += '<div class="cast"><div class="avatar" style="background:linear-gradient(140deg,hsl(' + (8 + (ch % 48)) + ',58%,44%),hsl(' + (28 + (ch % 40)) + ',60%,24%))">' +
          initialsOf(name) + '</div><div class="cast-name">' + name + '</div></div>';
   }
   return h + '</div></div>';
@@ -979,7 +979,7 @@ function renderTV(){
   } else if(def.layout==='player'){
     const d = state.detail || MOVIES[0];
     const focused = state.focusId==='playpause';
-    html += '<div class="playerbox"><div class="pbtn" style="' + (focused?'transform:scale(1.1);box-shadow:0 0 0 4px rgba(85,214,190,.4);':'') + '">' +
+    html += '<div class="playerbox"><div class="pbtn" style="' + (focused?'transform:scale(1.1);box-shadow:0 0 0 4px rgba(255,198,26,.45);':'') + '">' +
             (state.playing ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
                            : ICONS.play) + '</div>' +
             '<div style="font-size:19px;font-weight:800;">' + d.title + '</div>' +
