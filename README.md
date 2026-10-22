@@ -16,7 +16,7 @@ A self-adapting, ability-aware navigation engine that learns from interaction di
 ## Screenshots
 Real captures from actual runs of the prototype (see `docs/DEMO_GUIDE.md` for the flow; build history in `CHANGELOG.md`):
 
-**Home — streaming-style UI in Shivaprasad's design language (navy + teal, cinematic hero, poster rows)**
+**Home — Android TV-style launcher (tabs bar, full-bleed hero, Favorite Apps, landscape poster rows)**
 ![Home in the new streaming look](screenshots/home-hero.png)
 
 **Movie page — full-bleed backdrop, reference-format meta, cast row (Google TV-style)**
