@@ -39,6 +39,21 @@ Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for 
 5. **Adapt, audit & undo** — applied adaptations are recorded in an audit panel with their triggering evidence and a timestamp, and each can be **undone** (the shortcut tile, graph edge, and size mode all revert). Dismissed suggestions are recorded too.
 6. **Recover** — mid-task difficulty triggers a recovery card whose goal is *predicted* from your path so far (route-coverage matching against each destination's canonical route, blended with learned prefix counts and visit history) with the next Dijkstra step to that goal. This is transparent counting over the graph — **not an LLM**, and it is labelled that way in the UI.
 
+### Architecture at a glance
+```mermaid
+flowchart LR
+    A[Remote key events] --> B[Event log & difficulty detection]
+    B --> C[Weighted navigation graph<br/>Dijkstra + Fitts effort model]
+    C --> D[Shortcut discovery<br/>visits x excess cost]
+    C --> E[Goal prediction<br/>route coverage + history]
+    E --> F[Contextual recovery card]
+    D --> G{User approves?}
+    G -- yes --> H[Adaptation applied<br/>pinned shortcut / enlarged focus]
+    G -- no --> I[Dismissal recorded]
+    H --> J[Audit panel<br/>evidence + Undo]
+    B --> K[Measured results<br/>before vs after]
+```
+
 ## Tests
 ```
 node --test        # node:test suite in tests/ — Dijkstra, Fitts monotonicity,
@@ -48,9 +63,16 @@ node --check js/engine.js && node --check js/app.js
 CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 
 ## Demo
+- **Demo video (v2, 2:20):** https://youtu.be/4bUqTW4MOoA — detection, recovery prediction, shortcut discovery, audit & undo, and the measured 8 → 2 press improvement.
 - **Live prototype:** https://arya123-sudo.github.io/AccessFlow/ — a mobile-first Fire TV experience simulator (10-foot UI + tappable on-screen remote).
 - Task flow: Home → Settings → Accessibility → Subtitles → On, first unadapted, then adapted.
 - Full walkthrough for judges: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
+
+## Fire TV app
+The same engine ships as a native Fire OS app — a thin WebView shell (package `com.arya.accessflow`) bundling this exact web build, driven by real Fire TV remote key events. Source: [`fire-tv/`](fire-tv/) · Build & sideload guide: [docs/INSTALL_FIRE_TV.md](docs/INSTALL_FIRE_TV.md) (includes honest status notes on device-farm verification).
+
+## User study
+A structured study protocol (3 tasks, no staged errors, standard SUS questionnaire, non-dominant-hand runs labelled as simulation) lives in [`docs/study/`](docs/study/). Participants run the live demo; the app's own panels report presses/errors/time. Results are compiled in `docs/study/results.csv` and summarised in the Devpost description as they complete.
 
 ## Run locally
 No build step and no dependencies — serve the folder with any static server:
@@ -70,6 +92,9 @@ js/engine.js        Weighted navigation graph, Dijkstra optimizer, Fitts effort
 js/app.js           Event logging, difficulty detection, metrics, task flow,
                     adaptation audit trail & undo
 tests/engine.test.js  Node test suite for the engine's pure logic
+fire-tv/              Native Fire OS wrapper app (WebView shell, Gradle project)
+docs/INSTALL_FIRE_TV.md  Build & sideload guide for the Fire TV app
+docs/study/           User-study protocol, participant script, results
 .github/workflows/ci.yml  CI: syntax checks + node --test on push
 docs/ARCHITECTURE.md  Engine, effort model, discovery, prediction, audit in detail
 docs/DEMO_GUIDE.md    How to run the demo and what to try
