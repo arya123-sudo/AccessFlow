@@ -86,6 +86,10 @@ CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 - Task flow: Home → Settings → Accessibility → Subtitles → On, first unadapted, then adapted.
 - Full walkthrough for judges: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
 
+## Repository layout — two builds, one project
+- **Shipped build (this demo + video):** the web engine at the repo root (`index.html`, `css/`, `js/`) and the Fire TV app in `fire-tv/` (package `com.arya.accessflow`, with prebuilt APK).
+- **React Native scaffold:** `android/`, `ios/` and `.bundle/` hold the platform folders from teammate Shivaprasad's parallel RN prototype (package `com.accessflowapp`), imported so the combined team project lives in one repo. The concepts adopted from it (movement profiles, guided navigation, path-effort tally) are implemented in the shipped web engine; his RN app remains canonical at https://github.com/shivaprasad938/accessflowai.
+
 ## Fire TV app
 The same engine ships as a native Fire OS app — a thin WebView shell (package `com.arya.accessflow`) bundling this exact web build, driven by real Fire TV remote key events. Source: [`fire-tv/`](fire-tv/) · Build & sideload guide: [docs/INSTALL_FIRE_TV.md](docs/INSTALL_FIRE_TV.md) (includes honest status notes on device-farm verification).
 

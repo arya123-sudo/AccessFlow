@@ -1,5 +1,8 @@
 # AccessFlow — Build Log (2026-10-22, hackathon day)
-One day, five build stages. Every stage is a real commit on `main`; nothing is backdated.
+One day, six build stages. Every stage is a real commit on `main`; nothing is backdated.
+
+## v6 — React Native platform scaffold imported (per team decision)
+- The `android/`, `ios/` and `.bundle/` folders from Shivaprasad's React Native prototype were imported into this repo at his team's request, so the combined project carries both builds side by side: the shipped web engine + Fire TV wrapper (`fire-tv/`), and his RN platform scaffold. His RN app itself (package `com.accessflowapp`) remains canonical in his repo; the features adopted from it live in the web engine (see v3/v5).
 
 ## v5 — Combined build (guided navigation + effort tally)
 - **Guided navigation walkthrough** — step-by-step route guidance ("Step k of n") that watches real presses and recomputes the route on deviation. *Adopted from Shivaprasad's prototype.*
