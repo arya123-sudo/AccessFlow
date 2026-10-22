@@ -696,9 +696,108 @@ function currentTarget(){
 const $ = id => document.getElementById(id);
 const tvBody = $('tvBody'), tvScreenEl = $('tvScreen');
 
+/* ---- Google TV-style rich layer (PRESENTATION ONLY) ----
+   Everything in this block is decoration: synopses, cast chips,
+   match scores, poster rows and backdrop art. None of it creates
+   screen items, ids, actions or graph edges — focus and navigation
+   are driven purely by the screen item data above, so the graph,
+   routes and press counts are untouched. Scores/years/casts are
+   derived deterministically from the title (stable hash), so the
+   page renders identically on every load. */
+const SYNOPSES = {
+  'riverrun':       'A river guide takes one last run down a flooding canyon to bring a stranded town its only lifeline.',
+  'desertlight':    'A photographer crossing the desert at golden hour finds the story she has been avoiding for years.',
+  'nightcircuit':   'A street racer turned courier uncovers a conspiracy hidden inside the city\u2019s midnight races.',
+  'harborsky':      'Two lighthouse keepers\u2019 children reunite at the harbor where they first fell in love.',
+  'emberfalls':     'A young ember-mage must cross the burning falls to wake the last guardian of the forest.',
+  'lastsignal':     'A deep-space relay operator picks up a signal that should not exist \u2014 her own voice, from tomorrow.',
+  'signalhill':     'A small-town radio host becomes the voice everyone trusts when the valley\u2019s only bridge washes out.',
+  'theorchard':     'Siblings inherit an orchard, a mountain of debt, and their grandfather\u2019s very stubborn goat.',
+  'northline':      'A film crew rides the last northern rail line, collecting the stories of the people who keep it alive.',
+  'the-last-horizon':'An aging explorer leads one final expedition to the unmapped edge of the world.',
+  'city-of-dreams': 'A night-shift dream architect helps strangers rewrite the dreams they cannot escape.',
+  'beyond-the-stars':'A botanist on a generation ship falls for the voice of a planet no one believes is there.',
+  'laugh-out-loud': 'A famously serious news anchor is paired with an improv comic for a week of live broadcasts.',
+  'hidden-truth':   'A forensic accountant finds one ledger entry that powerful people will do anything to erase.',
+  'family-time':    'Three generations, one borrowed van, and a road trip none of them planned \u2014 or will forget.'
+};
+const CAST_POOL = ['Ava Moreno','Liam Carter','Sofia Reyes','Noah Bennett','Maya Chen','Ethan Wright',
+                   'Isla Novak','Owen Brooks','Lena Fischer','Caleb Ortiz','Ruby Hart','Jonas Beck'];
+function hashTitle(s){
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function matchForTitle(title){ return 85 + (hashTitle(title) % 15); }        // 85–99, stable per title
+function synopsisFor(d){
+  if(SYNOPSES[d.id]) return SYNOPSES[d.id];
+  const g = (detailMetaParts(d).genre || 'story').toLowerCase();
+  return 'A ' + g + ' worth settling in for \u2014 press Play when you are ready.';
+}
+function castFor(d){
+  const off = hashTitle(d.title) % CAST_POOL.length, out = [];
+  for(let i = 0; i < 5; i++) out.push(CAST_POOL[(off + i) % CAST_POOL.length]);
+  return out;
+}
+/* Parse a catalog meta string ('Adventure · 2024 · 1h 52m',
+   'Comedy • 1h 30m', 'Drama series · 2 seasons') into the pieces the
+   rich detail/hero rows display. Missing pieces are filled in
+   deterministically from the title hash — never randomised. */
+function detailMetaParts(d){
+  const parts = String(d.meta || '').split(/[\u00B7\u2022]/).map(s=>s.trim()).filter(Boolean);
+  let genre = '', duration = '', year = '';
+  for(const p of parts){
+    if(/^\d{4}$/.test(p)) year = p;
+    else if(/^\d+h\s*\d+m$/.test(p)) duration = p;
+    else if(/season/i.test(p)) duration = p.charAt(0).toUpperCase() + p.slice(1);
+    else if(!genre) genre = p.replace(/\s*series\s*/i, '');
+  }
+  if(!year) year = String(2023 + (hashTitle(d.title) % 2));                  // 2023 or 2024
+  if(!duration) duration = 'Movie night pick';
+  genre = genre || (d.kind || 'Movie');
+  const CERT_BY_GENRE = { 'Thriller':'U/A 16+', 'Family':'U', 'Comedy':'U/A 7+', 'Romance':'U/A 13+' };
+  const cert = CERT_BY_GENRE[genre] || 'U/A 13+';
+  const quality = (hashTitle(d.title) % 4 === 0) ? 'HD' : '4K';
+  return { genre:genre, duration:duration, year:year, match:matchForTitle(d.title), cert:cert, quality:quality };
+}
+/* Layered CSS-art scenery for a title: a warm glow, a cool wash and a
+   deep hue slope — no images, just gradients in the title's hue. */
+function posterArtStyle(m){
+  const h = m.hue, h2 = (m.hue + 45) % 360;
+  return 'background:' +
+    'radial-gradient(120% 90% at 15% 0%, hsla(' + h + ',80%,70%,.55), rgba(0,0,0,0) 55%),' +
+    'radial-gradient(95% 70% at 88% 22%, hsla(' + h2 + ',75%,52%,.50), rgba(0,0,0,0) 62%),' +
+    'linear-gradient(158deg, hsl(' + h + ',64%,46%) 0%, hsl(' + h + ',60%,30%) 55%, hsl(' + h2 + ',62%,13%) 100%)';
+}
+function initialsOf(title){ return title.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 function posterHTML(m, big){
-  return '<div class="' + (big?'detail-poster':'poster') + '" style="background:linear-gradient(140deg,hsl(' + m.hue + ',60%,40%),hsl(' + ((m.hue+40)%360) + ',62%,16%))">' +
-         m.title.split(' ').map(w=>w[0]).join('').slice(0,2) + '</div>';
+  return '<div class="' + (big?'detail-poster':'poster') + '" style="' + posterArtStyle(m) + '">' +
+         '<span class="poster-mono">' + initialsOf(m.title) + '</span></div>';
+}
+/* Decorative poster card used by the Home rows and More Like This. */
+function rowPosterHTML(m){
+  return '<div class="row-poster"><div class="row-poster-art" style="' + posterArtStyle(m) + '">' +
+         '<span class="poster-mono">' + initialsOf(m.title) + '</span></div>' +
+         '<div class="row-poster-title">' + m.title + '</div>' +
+         '<div class="row-poster-meta">' + m.meta + '</div></div>';
+}
+function posterRowHTML(label, movies){
+  let h = '<div class="poster-row-sec" aria-hidden="true"><div class="poster-row-label">' + label + '</div><div class="poster-row">';
+  for(const m of movies) h += rowPosterHTML(m);
+  return h + '</div></div>';
+}
+function titleById(id){
+  return MOVIES.concat(SHOWS, SHIVAPRASAD_CATALOG).find(m=>m.id===id) || MOVIES[0];
+}
+/* Home's two decorative rows, drawn from the combined catalog
+   (ours + Shivaprasad's six). Pure decoration: no data-id, no
+   action, aria-hidden — they can never take focus or add a node. */
+function homeRowsHTML(){
+  const topSelling = ['riverrun','the-last-horizon','nightcircuit','beyond-the-stars','emberfalls'];
+  const recent     = ['desertlight','city-of-dreams','laugh-out-loud','lastsignal','family-time'];
+  return '<div class="poster-rows">' +
+         posterRowHTML('Top Selling Movies', topSelling.map(titleById)) +
+         posterRowHTML('Recently Added', recent.map(titleById)) + '</div>';
 }
 /* Home hero banner — DECORATIVE ONLY (streaming-service look, after
    Shivaprasad's RN prototype). It renders no screen item: no id, no
@@ -707,11 +806,58 @@ function posterHTML(m, big){
    press count or graph edge. It simply features the first movie. */
 function heroHTML(){
   const m = MOVIES[0];
-  return '<div class="hero" style="background:linear-gradient(100deg, rgba(11,16,32,.93) 26%, rgba(11,16,32,.55) 58%, rgba(11,16,32,.12) 100%), linear-gradient(135deg, hsl(' + m.hue + ',62%,40%), hsl(' + ((m.hue+45)%360) + ',65%,16%))">' +
+  const mp = detailMetaParts(m);
+  const h = m.hue, h2 = (m.hue + 45) % 360;
+  const backdrop =
+    'linear-gradient(100deg, rgba(11,16,32,.94) 24%, rgba(11,16,32,.58) 56%, rgba(11,16,32,.10) 100%),' +
+    'radial-gradient(90% 130% at 82% 0%, hsla(' + h2 + ',85%,68%,.80), rgba(0,0,0,0) 55%),' +
+    'radial-gradient(70% 90% at 8% 108%, hsla(' + h + ',80%,55%,.55), rgba(0,0,0,0) 60%),' +
+    'linear-gradient(150deg, hsl(' + h + ',64%,44%) 0%, hsl(' + h + ',60%,27%) 58%, hsl(' + h2 + ',64%,12%) 100%)';
+  /* Full-bleed hero (Google TV home): the art fills the screen width
+     and the top of the TV area; a slim decorative strip (search glyph
+     + text tabs) rides on the art, the featured treatment sits
+     bottom-left, and the focusable cards begin over its fade. All of
+     it is aria-hidden decoration — no items, no focus, no edges. */
+  return '<div class="hero" aria-hidden="true" style="background:' + backdrop + '">' +
+         '<div class="hero-strip"><span class="hsearch">' + ICONS.search + '</span>' +
+         '<span class="htab on">For You</span><span class="htab">Movies</span>' +
+         '<span class="htab">Shows</span><span class="htab">Apps</span></div>' +
+         '<div class="hero-block">' +
          '<div class="hero-kicker">Featured</div>' +
          '<div class="hero-title">' + m.title + '</div>' +
-         '<div class="hero-meta">' + m.meta + '</div>' +
-         '<div class="hero-play">' + ICONS.play + 'Play</div></div>';
+         '<div class="hero-chips"><span class="mchip match">' + mp.match + '% Match</span>' +
+         '<span class="mchip">' + mp.year + '</span>' +
+         '<span class="mchip">' + mp.duration + '</span>' +
+         '<span class="mchip genre">' + mp.genre + '</span></div>' +
+         '<div class="hero-syn">' + synopsisFor(m) + '</div>' +
+         '<div class="hero-play">' + ICONS.play + 'Play</div></div></div>';
+}
+/* Detail-page rich blocks — all decoration around the two REAL
+   detail items (Play / Watchlist), which are rendered separately
+   below with their original ids, order and actions. */
+function backdropStyle(d){
+  const h = d.hue, h2 = (d.hue + 45) % 360;
+  return 'background:' +
+    'linear-gradient(180deg, rgba(11,16,32,.16) 0%, rgba(11,16,32,.04) 38%, rgba(11,16,32,.86) 86%, #0B1020 100%),' +
+    'radial-gradient(85% 120% at 80% 4%, hsla(' + h2 + ',85%,67%,.85), rgba(0,0,0,0) 55%),' +
+    'radial-gradient(75% 95% at 10% 22%, hsla(' + h + ',78%,55%,.55), rgba(0,0,0,0) 62%),' +
+    'linear-gradient(155deg, hsl(' + h + ',66%,45%) 0%, hsl(' + h + ',60%,27%) 55%, hsl(' + h2 + ',64%,12%) 100%)';
+}
+function castHTML(d){
+  let h = '<div class="detail-sec" aria-hidden="true"><div class="detail-sec-title">Cast</div><div class="cast-row">';
+  for(const name of castFor(d)){
+    const ch = hashTitle(d.title + ':' + name);
+    h += '<div class="cast"><div class="avatar" style="background:linear-gradient(140deg,hsl(' + (ch % 360) + ',58%,44%),hsl(' + ((ch + 50) % 360) + ',60%,24%))">' +
+         initialsOf(name) + '</div><div class="cast-name">' + name + '</div></div>';
+  }
+  return h + '</div></div>';
+}
+function moreLikeThisHTML(d){
+  const pool = MOVIES.concat(SHIVAPRASAD_CATALOG, SHOWS).filter(m=>m.id!==d.id);
+  const start = hashTitle(d.title) % pool.length;
+  let h = '<div class="detail-sec" aria-hidden="true"><div class="detail-sec-title">More Like This</div><div class="poster-row">';
+  for(let i = 0; i < 4; i++) h += rowPosterHTML(pool[(start + i) % pool.length]);
+  return h + '</div></div>';
 }
 function itemInner(it){
   let h = '';
@@ -742,6 +888,7 @@ function renderTV(){
       html += '<div class="tile' + (it.id===state.focusId?' focused':'') + (it.shortcut?' shortcut':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
     html += '</div>';
     if(def.credit) html += '<p class="tv-hint" style="margin:10px 0 0;">' + def.credit + '</p>';
+    if(state.screen==='home') html += homeRowsHTML();
   } else if(def.layout==='list'){
     html += '<h2 class="tv-title">' + def.title + '</h2>';
     html += '<div class="list">';
@@ -754,11 +901,32 @@ function renderTV(){
     html += '</div>';
   } else if(def.layout==='detail'){
     const d = state.detail || MOVIES[0];
-    html += '<div class="detail-head">' + posterHTML(d, true) +
-            '<div><h4>' + d.title + '</h4><p>' + d.meta + '</p><p>' + (d.kind||'Movie') + ' · Ready when you are</p></div></div>';
-    html += '<div class="tiles cols2">';
-    for(const it of def.items)
-      html += '<div class="tile' + (it.id===state.focusId?' focused':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
+    const mp = detailMetaParts(d);
+    /* Full-bleed cinematic backdrop (CSS art in the title's hue) with
+       the content flowing over its scrim. The backdrop, cast and
+       More Like This blocks are decoration (aria-hidden); the ONLY
+       focusable elements are the two original detail items, rendered
+       in original order with original ids and actions — Play restyled
+       as the white primary pill, Watchlist as the "+ Watchlist" pill. */
+    html += '<div class="detail-backdrop" aria-hidden="true" style="' + backdropStyle(d) + '"></div>';
+    html += '<div class="detail-main">';
+    html += '<div class="detail-kicker">' + (d.kind||'Movie') + '</div>';
+    html += '<h2 class="detail-title">' + d.title + '</h2>';
+    html += '<div class="detail-meta"><span class="match">' + mp.match + '% Match</span>' +
+            '<span class="meta-line">' + mp.duration + ' \u2022 ' + mp.year + ' \u2022 ' + mp.genre +
+            ' \u2022 ' + mp.cert + ' \u2022 ' + mp.quality + '</span></div>';
+    html += '<p class="detail-syn">' + synopsisFor(d) + '</p>';
+    html += '<div class="detail-actions">';
+    for(const it of def.items){
+      const foc = it.id===state.focusId ? ' focused' : '';
+      if(it.id==='play')
+        html += '<div class="tile play-pill' + foc + '" data-id="' + it.id + '"><span class="ic">' + ICONS.play + '</span><span class="lbl">' + it.label + '</span></div>';
+      else
+        html += '<div class="tile watch-pill' + foc + '" data-id="' + it.id + '"><span class="lbl">+ Watchlist</span></div>';
+    }
+    html += '</div>';
+    html += castHTML(d);
+    html += moreLikeThisHTML(d);
     html += '</div>';
   } else if(def.layout==='player'){
     const d = state.detail || MOVIES[0];
