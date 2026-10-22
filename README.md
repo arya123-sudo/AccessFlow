@@ -14,7 +14,19 @@ AccessFlow identifies navigation difficulties, dynamically optimizes interaction
 A self-adapting, ability-aware navigation engine that learns from interaction difficulties and optimizes TV navigation workflows, instead of relying on fixed navigation structures.
 
 ## Screenshots
-Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for the flow):
+Real captures from actual runs of the prototype (see `docs/DEMO_GUIDE.md` for the flow; build history in `CHANGELOG.md`):
+
+**Guided navigation — step-by-step walkthrough that reroutes when you deviate**
+![Guided navigation](screenshots/guided-navigation.png)
+
+**Live metrics — movement profiles, your path effort vs the optimal, learning status**
+![Metrics, tally and profiles](screenshots/metrics-tally-profiles.png)
+
+**Discovery across sessions — the suggestion cites accumulated data (2 sessions, 2 runs, 16 presses)**
+![Discovery across sessions](screenshots/discovery-across-sessions.png)
+
+**Results + Adaptations audit panel — every applied change, its evidence, and Undo**
+![Adaptations panel](screenshots/adaptations-panel.png)
 
 **Fire TV Home — baseline navigation**
 ![Home](screenshots/home.png)
