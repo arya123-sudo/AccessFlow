@@ -1,5 +1,10 @@
 # AccessFlow — Build Log (2026-10-22, hackathon day)
-One day, nine build stages. Every stage is a real commit on `main`; nothing is backdated.
+One day, ten build stages. Every stage is a real commit on `main`; nothing is backdated.
+
+## v10 — Home rebuilt as the reference launcher; page is a product, not a pitch
+- Home now mirrors the Android TV launcher structure from the team's reference video: tabs bar (Search · Home · Shop · Discover · Apps, gear, avatar, live clock) floating over a full-bleed hero, "Favorite Apps" row (the existing focusable tiles), chips row, a wide "Curated by AccessFlow" feature panel, and landscape (16:9) poster rows — "Top selling movies" and "Recently Added".
+- The Problem/Solution cards were removed from the demo page itself (they remain in this repo's README and the Devpost text, where judges read them); the presenter script was updated to match.
+- Presentational only, as ever: graph 44 nodes / 206 edges, canonical flow re-verified (8 → 2 presses, 20/20 tests).
 
 ## v9 — Google TV-style rich layer (from the reference video, ~2:55)
 - Home hero is now full-bleed: edge-to-edge backdrop art filling the top half of the TV, slim "For You · Movies · Shows · Apps" strip, FEATURED title treatment with match-% meta chips and synopsis over the art.
