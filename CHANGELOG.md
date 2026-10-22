@@ -1,5 +1,11 @@
 # AccessFlow — Build Log (2026-10-22, hackathon day)
-One day, eight build stages. Every stage is a real commit on `main`; nothing is backdated.
+One day, nine build stages. Every stage is a real commit on `main`; nothing is backdated.
+
+## v9 — Google TV-style rich layer (from the reference video, ~2:55)
+- Home hero is now full-bleed: edge-to-edge backdrop art filling the top half of the TV, slim "For You · Movies · Shows · Apps" strip, FEATURED title treatment with match-% meta chips and synopsis over the art.
+- Portrait (2:3) poster rows in the Google TV style — "Top Selling Movies" and "Recently Added" — mixing our catalog with Shivaprasad's titles (decoration only, non-focusable).
+- Movie detail page rebuilt to the reference: full-bleed backdrop, meta in the "2h 10m • 2024 • Adventure • U/A 13+ • 4K" format with a deterministic match %, original one-line synopses for all 15 titles, white Play pill + Watchlist, Cast row (5 sample avatars), "More Like This" posters.
+- Still purely presentational: graph unchanged (44 nodes / 206 edges), canonical flow re-verified (8 → 2 presses; 20/20 tests; 27/27 headless checks).
 
 ## v8 — Streaming-UI restyle (his look, our engine)
 - The TV UI was re-themed to Shivaprasad's design language: deep navy `#0B1020`, teal `#55D6BE` accent, ACCESSFLOW wordmark + "Ability-Aware Smart TV Navigation" tagline, cinematic Home hero (featured title), poster-card rows, teal focus borders with scale — the Netflix/Hotstar-style presentation of his RN prototype.

@@ -19,6 +19,9 @@ Real captures from actual runs of the prototype (see `docs/DEMO_GUIDE.md` for th
 **Home — streaming-style UI in Shivaprasad's design language (navy + teal, cinematic hero, poster rows)**
 ![Home in the new streaming look](screenshots/home-hero.png)
 
+**Movie page — full-bleed backdrop, reference-format meta, cast row (Google TV-style)**
+![Movie detail page](screenshots/movie-detail.png)
+
 **Guided navigation — step-by-step walkthrough that reroutes when you deviate**
 ![Guided navigation](screenshots/guided-navigation.png)
 
