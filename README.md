@@ -1,5 +1,7 @@
 # AccessFlow: AI-Powered Adaptive Navigation for Smart TV Accessibility
 
+[![ci](https://github.com/arya123-sudo/AccessFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/arya123-sudo/AccessFlow/actions/workflows/ci.yml)
+
 An AI-assisted, self-adaptive navigation system for Amazon Fire TV that personalizes navigation based on individual user needs and interaction patterns — built for the **Build, Ship, Shape: Amazon Developer Hackathon** (Fire TV track).
 
 ## The problem
@@ -31,10 +33,19 @@ Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for 
 
 ## How it works
 1. **Detect** — every remote press is logged; overshoots, backtracks, wrong selects, reversals, and hesitations are classified live.
-2. **Optimize** — screens and focus positions are graph nodes, remote actions are weighted edges; Dijkstra's algorithm computes the lowest-effort path to the goal. Edge weights rise where this user struggles.
-3. **Suggest** — when difficulty crosses a threshold, an adaptation is proposed with its reason (e.g., pin a Subtitles shortcut on Home, larger focus targets).
+2. **Optimize** — screens and focus positions are graph nodes, remote actions are weighted edges; Dijkstra's algorithm computes the lowest-effort path to the goal. Edge costs use a Fitts's-law effort model — `(1 + log₂(distance ÷ target size + 1)) × (1 + your error rate)` plus a learned bump on edges where you struggled — so "effort" reflects target size, distance, and your own error pattern, not just press counts.
+3. **Discover & suggest** — after each run, destinations are ranked by `visits × average excess cost` from your measured statistics, and a shortcut to the *winning* destination is proposed with its evidence. Nothing is pre-chosen: costly, frequent destinations surface on their own. Enlarged focus is proposed separately when overshoots/reversals are high.
 4. **Approve** — nothing changes without the user's explicit approval.
-5. **Adapt & measure** — the same task is re-run and the before/after presses, errors, and time are compared from measured data.
+5. **Adapt, audit & undo** — applied adaptations are recorded in an audit panel with their triggering evidence and a timestamp, and each can be **undone** (the shortcut tile, graph edge, and size mode all revert). Dismissed suggestions are recorded too.
+6. **Recover** — mid-task difficulty triggers a recovery card whose goal is *predicted* from your path so far (route-coverage matching against each destination's canonical route, blended with learned prefix counts and visit history) with the next Dijkstra step to that goal. This is transparent counting over the graph — **not an LLM**, and it is labelled that way in the UI.
+
+## Tests
+```
+node --test        # node:test suite in tests/ — Dijkstra, Fitts monotonicity,
+                   # discovery ranking, goal prediction, detection helper
+node --check js/engine.js && node --check js/app.js
+```
+CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 
 ## Demo
 - **Live prototype:** https://arya123-sudo.github.io/AccessFlow/ — a mobile-first Fire TV experience simulator (10-foot UI + tappable on-screen remote).
@@ -54,9 +65,13 @@ Then open `index.html` in a browser. Controls: on-screen remote, or arrow keys +
 ```
 index.html          Page shell and TV/remote markup
 css/styles.css      10-foot UI theme, focus states, responsive layout
-js/engine.js        Weighted navigation graph, Dijkstra optimizer, adaptive UI state
-js/app.js           Event logging, difficulty detection, metrics, task flow
-docs/ARCHITECTURE.md  Engine, detection signals, and adaptation policy in detail
+js/engine.js        Weighted navigation graph, Dijkstra optimizer, Fitts effort
+                    model, shortcut discovery, goal prediction, adaptive UI state
+js/app.js           Event logging, difficulty detection, metrics, task flow,
+                    adaptation audit trail & undo
+tests/engine.test.js  Node test suite for the engine's pure logic
+.github/workflows/ci.yml  CI: syntax checks + node --test on push
+docs/ARCHITECTURE.md  Engine, effort model, discovery, prediction, audit in detail
 docs/DEMO_GUIDE.md    How to run the demo and what to try
 ```
 
