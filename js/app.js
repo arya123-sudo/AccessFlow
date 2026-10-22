@@ -372,7 +372,15 @@ function showSuggestion(reason){
   } else {
     $('suggestText').textContent = 'AccessFlow has detected enough friction to analyse your runs \u2014 here is what the data says:';
   }
-  $('suggestFindings').innerHTML = '<ul>' + sug.evidence.map(p=>'<li>' + p + '</li>').join('') + '</ul>';
+  /* Honesty about thin data: when the winning destination's stats
+     rest on a single measured run, the card says so — the suggestion
+     is real but early, and it sharpens as more runs accumulate. Only
+     the card's displayed list changes; sug.evidence itself (reused
+     verbatim in the audit trail) is untouched. */
+  const evidenceLines = sug.evidence.slice();
+  if(sug.visits === 1)
+    evidenceLines.push('(Early suggestion from 1 run \u2014 it sharpens as you navigate more.)');
+  $('suggestFindings').innerHTML = '<ul>' + evidenceLines.map(p=>'<li>' + p + '</li>').join('') + '</ul>';
   card.classList.add('show');
   logEvent('AccessFlow discovered a candidate from your data: ' + sug.dest.name + ' (score ' + sug.score.toFixed(1) + '). Waiting for your decision \u2014 nothing changes without approval.', 'guide');
   card.scrollIntoView({behavior:'smooth', block:'nearest'});
