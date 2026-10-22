@@ -70,17 +70,43 @@
         aspect-ratio:16/9.4; display:flex; flex-direction:column;
       }
       .tv-screen.hc{ background:#000; --tile:#101010; --tile2:#1c1c1c; }
+      /* ---------- TV top bar (Android TV launcher chrome) ----------
+         Mic + Search, section tabs with an underlined active tab,
+         then gear / avatar / clock on the right. Decorative except
+         the status badges and the live clock. On Home the bar floats
+         over the full-bleed hero (.on-home). */
       .tv-top{
-        display:flex; align-items:center; gap:8px; padding:8px 14px;
-        background:rgba(255,255,255,.03); border-bottom:1px solid rgba(255,255,255,.06);
-        font-size:13px; flex:none;
+        display:flex; align-items:center; gap:18px; padding:10px 18px;
+        background:linear-gradient(180deg, rgba(17,26,50,.95), rgba(12,19,38,.92));
+        border-bottom:1px solid rgba(255,255,255,.06);
+        font-size:13.5px; flex:none; position:relative; z-index:8;
       }
-      .tv-brand{ font-size:12px; font-weight:800; letter-spacing:.24em; color:var(--teal); }
-      .tv-top .scr{
-        font-weight:700; font-size:12.5px; background:var(--panel2); border:1px solid var(--line);
-        border-radius:999px; padding:2px 11px;
+      .tt-search{ display:inline-flex; align-items:center; gap:7px; color:#e8effa; font-weight:600; flex:none; }
+      .tt-search svg{ width:16px; height:16px; display:block; }
+      .tt-tabs{ display:flex; align-items:center; gap:20px; }
+      .tvtab{ color:#9fb0c9; font-weight:600; padding:2px 1px 5px; position:relative; white-space:nowrap; }
+      .tvtab.on{ color:#fff; font-weight:700; }
+      .tvtab.on::after{
+        content:""; position:absolute; left:0; right:0; bottom:0; height:3px;
+        border-radius:3px; background:#fff;
       }
-      .tv-top .clock{ margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; }
+      .tt-right{ margin-left:auto; display:flex; align-items:center; gap:12px; flex:none; }
+      .tt-gear{ width:17px; height:17px; color:#c9d6ea; display:inline-flex; }
+      .tt-gear svg{ width:100%; height:100%; display:block; }
+      .tt-avatar{
+        width:26px; height:26px; border-radius:50%; flex:none;
+        background:linear-gradient(140deg, #3f8cff, #2456c8); color:#fff;
+        display:inline-flex; align-items:center; justify-content:center;
+        font-size:12.5px; font-weight:800; box-shadow:inset 0 -6px 10px rgba(0,0,0,.28);
+      }
+      .tv-top .clock{ color:#fff; font-weight:600; font-size:13.5px; font-variant-numeric:tabular-nums; }
+      .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+      .tv-screen.on-home .tv-top{
+        position:absolute; top:0; left:0; right:0;
+        background:linear-gradient(180deg, rgba(4,6,14,.68) 0%, rgba(4,6,14,.30) 62%, rgba(4,6,14,0) 100%);
+        border-bottom:none;
+      }
+      .tv-screen.on-home .tv-body{ padding-top:0; }
       .badge{ font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; background:#263653; color:#c7d6f2; }
       .badge.on{ background:var(--amber); color:var(--amber-ink); }
       .badge.cc{ background:rgba(62,207,122,.16); color:#8ff0b6; }
@@ -90,45 +116,96 @@
       .tv-title{ font-size:24px; font-weight:800; color:#fff; margin:0 0 3px; letter-spacing:.01em; line-height:1.15; }
 
       /* ---------- Home hero (decorative, never focusable) ----------
-         Full-bleed: negative margins pull the art to the TV screen's
-         edges (over the body padding), it fills roughly the top half
-         of the TV area, the strip rides on the art, the featured
-         block sits bottom-left, and the focusable cards begin over
-         its bottom fade (negative bottom margin + .tiles stacking). */
+         Full-bleed like the Android TV launcher: negative margins pull
+         the art to the TV screen's edges, it fills the top ~55% of the
+         TV area, the TV top bar floats over it (.on-home), the featured
+         block sits bottom-left, and the Favorite Apps cards begin over
+         its bottom fade (negative bottom margin). */
       .hero{
-        position:relative; border-radius:0; overflow:hidden; margin:-12px -14px -10px;
-        min-height:200px; padding:11px 18px 16px; display:flex; flex-direction:column; justify-content:space-between; gap:2px;
-        box-shadow:inset 0 0 70px rgba(0,0,0,.45), inset 0 -34px 44px rgba(11,16,32,.55);
+        position:relative; border-radius:0; overflow:hidden; margin:-12px -14px -30px;
+        min-height:252px; padding:16px 20px 38px; display:flex; flex-direction:column; justify-content:flex-end;
+        box-shadow:inset 0 0 70px rgba(0,0,0,.45), inset 0 -44px 56px rgba(11,16,32,.62);
       }
-      .hero-strip{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#aebdd4; }
-      .hero-strip .hsearch{ width:15px; height:15px; color:#dbe6f5; display:inline-flex; }
-      .hero-strip .hsearch svg{ width:100%; height:100%; display:block; }
-      .hero-strip .htab{ font-weight:600; letter-spacing:.02em; }
-      .hero-strip .htab.on{ color:#fff; font-weight:800; }
-      .hero-block{ display:flex; flex-direction:column; gap:2px; align-items:flex-start; }
-      .hero-block .hero-title{ font-size:34px; text-shadow:0 2px 12px rgba(0,0,0,.55); }
-      .hero-chips{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:6px; font-size:12.5px; color:#dbe6f5; }
-      .mchip{ font-weight:600; }
-      .mchip.match{ color:var(--green); font-weight:800; }
-      .mchip.genre{
-        border:1px solid rgba(255,255,255,.35); background:rgba(11,16,32,.45);
-        border-radius:6px; padding:0 8px; font-size:11.5px; line-height:1.7;
-      }
-      .hero-syn{ font-size:12.5px; color:#c9d6ea; max-width:78%; margin-top:5px; line-height:1.35; }
+      .tv-screen.on-home .hero{ margin-top:0; padding-top:58px; }
       .hero::after{
         content:""; position:absolute; inset:0; pointer-events:none;
         background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 42%);
       }
       .hero > *{ position:relative; }
-      .hero-kicker{ font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--teal); }
-      .hero-title{ font-size:30px; font-weight:800; color:#fff; line-height:1.05; }
-      .hero-meta{ font-size:13px; color:#c9d6ea; }
-      .hero-play{
-        margin-top:8px; align-self:flex-start; display:inline-flex; align-items:center; gap:7px;
-        background:var(--teal); color:var(--amber-ink); font-weight:800; font-size:13.5px;
-        padding:6px 15px 6px 12px; border-radius:999px;
+      .hero-block{ display:flex; flex-direction:column; gap:2px; align-items:flex-start; }
+      .hero-kicker{ font-size:12px; font-weight:600; letter-spacing:.05em; color:rgba(226,236,250,.85); margin-bottom:5px; }
+      .hero-title{ font-size:36px; font-weight:800; color:#fff; line-height:1.04; text-shadow:0 2px 14px rgba(0,0,0,.55); }
+      .hero-syn{ font-size:13px; color:#d3deee; max-width:76%; margin-top:5px; line-height:1.4; }
+      .hero-meta-line{ font-size:12px; color:rgba(196,211,233,.9); margin-top:6px; font-weight:600; letter-spacing:.02em; }
+      .hero-meta-line .hmatch{ color:var(--green); font-weight:800; }
+
+      /* ---------- Favorite Apps (Home section label + app tiles) ---------- */
+      .fav-label{ font-size:13.5px; font-weight:700; color:#fff; margin:2px 0 8px; position:relative; z-index:2; }
+      .tiles.home-apps .tile{
+        align-items:center; text-align:center; justify-content:center;
+        background:rgba(28,37,65,.88);
       }
-      .hero-play svg{ width:13px; height:13px; display:block; }
+      .tiles.home-apps .tile .ic{ width:24px; height:24px; }
+      .tiles.home-apps .tile.focused{ background:var(--tile2); }
+
+      /* ---------- Home chips row (decorative) ---------- */
+      .chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+      .fchip{
+        display:inline-flex; align-items:center; gap:7px; padding:6px 13px; border-radius:8px;
+        background:#263653; border:1px solid rgba(255,255,255,.05); color:#dbe6f5;
+        font-size:12px; font-weight:600; white-space:nowrap;
+      }
+      .fchip .fdot{ width:8px; height:8px; border-radius:50%; flex:none; }
+      .fchip.on{ background:#e8edf5; color:#101828; border-color:#e8edf5; }
+
+      /* ---------- Home feature panel (decorative) ----------
+         Wide slate panel like the launcher's sponsored panel: a text
+         block on the left, landscape thumbnails on the right. */
+      .feat-panel{
+        margin-top:14px; border-radius:14px; padding:16px 18px;
+        background:linear-gradient(118deg, #22335c 0%, #182747 55%, #121e3a 100%);
+        border:1px solid rgba(255,255,255,.07);
+        display:flex; gap:20px; align-items:center;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+      }
+      .feat-txt{ flex:0 0 27%; min-width:150px; }
+      .feat-eyebrow{ font-size:12px; color:#aebdd4; }
+      .feat-eyebrow b{ color:#fff; }
+      .feat-title{ font-size:19px; font-weight:800; color:#fff; margin:5px 0 6px; line-height:1.2; }
+      .feat-desc{ font-size:12px; color:#a9bcd8; line-height:1.45; }
+      .feat-thumbs{ flex:1; display:flex; gap:10px; min-width:0; }
+      .feat-thumb{ flex:1 1 0; min-width:0; }
+      .feat-art{
+        aspect-ratio:16/9; border-radius:9px; position:relative; overflow:hidden;
+        box-shadow:inset 0 -22px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15);
+      }
+      .feat-art .poster-mono{
+        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        font-size:24px; font-weight:800; color:rgba(255,255,255,.9);
+        text-shadow:0 2px 6px rgba(0,0,0,.45); letter-spacing:.03em;
+      }
+      .feat-art-title{
+        position:absolute; left:8px; bottom:6px; font-size:11px; font-weight:800; color:#fff;
+        text-shadow:0 1px 4px rgba(0,0,0,.6); white-space:nowrap; overflow:hidden;
+        max-width:calc(100% - 16px); text-overflow:ellipsis;
+      }
+
+      /* ---------- Home landscape poster rows (decorative) ---------- */
+      .land-card{ flex:1 1 0; min-width:0; }
+      .land-art{
+        aspect-ratio:16/9; border-radius:10px; position:relative; overflow:hidden;
+        box-shadow:inset 0 -24px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15);
+      }
+      .land-art .poster-mono{
+        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        font-size:22px; font-weight:800; color:rgba(255,255,255,.92);
+        text-shadow:0 2px 6px rgba(0,0,0,.45); letter-spacing:.03em;
+      }
+      .land-title{
+        position:absolute; left:8px; bottom:6px; font-size:11px; font-weight:800; color:#fff;
+        text-shadow:0 1px 4px rgba(0,0,0,.6); white-space:nowrap; overflow:hidden;
+        max-width:calc(100% - 16px); text-overflow:ellipsis;
+      }
 
       .tiles{ display:grid; gap:10px; position:relative; }
       .tiles.cols3{ grid-template-columns:repeat(3,1fr); }
@@ -201,10 +278,10 @@
 
       /* ---------- Detail page (Google TV-style, decoration around the real items) ---------- */
       .detail-backdrop{
-        height:198px; margin:-12px -14px 0; position:relative;
+        height:228px; margin:-12px -14px 0; position:relative;
         box-shadow:inset 0 0 80px rgba(0,0,0,.35);
       }
-      .detail-main{ position:relative; margin-top:-106px; padding:0 4px 2px; }
+      .detail-main{ position:relative; margin-top:-132px; padding:0 4px 2px; }
       .detail-kicker{ font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--teal); }
       .detail-title{ font-size:34px; font-weight:800; color:#fff; margin:2px 0 6px; line-height:1.05; text-shadow:0 2px 10px rgba(0,0,0,.5); }
       .detail-meta{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:13px; color:#d7e2f0; }
@@ -404,23 +481,37 @@
         .tv-screen{ aspect-ratio:16/12.6; }
         .tv-body{ padding:9px 10px; }
         .tv-title{ font-size:19px; }
-        .hero{ min-height:172px; padding:9px 14px 12px; margin:-9px -10px -8px; }
-        .hero-title{ font-size:22px; }
-        .hero-block .hero-title{ font-size:25px; }
-        .hero-strip{ gap:11px; font-size:11.5px; }
+        .tv-top{ gap:10px; padding:8px 10px; font-size:12px; }
+        .tt-tabs{ gap:12px; }
+        .tt-gear{ display:none; }
+        .tt-avatar{ width:22px; height:22px; font-size:11px; }
+        .tv-top .clock{ font-size:12px; }
+        .hero{ min-height:200px; padding:10px 14px 28px; margin:-9px -10px -24px; }
+        .tv-screen.on-home .hero{ margin-top:0; padding-top:46px; }
+        .hero-title{ font-size:25px; }
         .hero-syn{ font-size:11px; max-width:92%; }
+        .hero-meta-line{ font-size:10.5px; }
+        .fav-label{ font-size:12.5px; margin-bottom:6px; }
+        .chip-row{ gap:6px; margin-top:12px; }
+        .fchip{ font-size:10.5px; padding:5px 10px; }
+        .feat-panel{ flex-direction:column; align-items:stretch; gap:12px; padding:13px 14px; margin-top:12px; }
+        .feat-txt{ flex:none; min-width:0; }
+        .feat-title{ font-size:16px; }
+        .feat-art .poster-mono{ font-size:15px; }
+        .feat-art-title{ font-size:9.5px; }
+        .land-art .poster-mono{ font-size:14px; }
+        .land-title{ font-size:9.5px; }
         .poster-row{ gap:7px; }
         .row-poster-art .poster-mono{ font-size:17px; }
         .row-poster-title{ font-size:10px; }
         .row-poster-meta{ display:none; }
-        .detail-backdrop{ height:148px; margin:-9px -10px 0; }
-        .detail-main{ margin-top:-80px; }
+        .detail-backdrop{ height:170px; margin:-9px -10px 0; }
+        .detail-main{ margin-top:-96px; }
         .detail-title{ font-size:24px; }
         .detail-syn{ font-size:12px; }
         .avatar{ width:40px; height:40px; font-size:13px; }
         .cast{ width:48px; }
         .cast-row{ gap:9px; }
-        .hero-play{ font-size:12px; padding:4px 11px 4px 9px; }
         .tiles{ gap:7px; }
         .tile{ min-height:50px; padding:7px 8px; }
         .tile .lbl{ font-size:13.5px; }
