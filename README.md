@@ -40,6 +40,8 @@ Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for 
 6. **Recover** — mid-task difficulty triggers a recovery card whose goal is *predicted* from your path so far (route-coverage matching against each destination's canonical route, blended with learned prefix counts and visit history) with the next Dijkstra step to that goal. This is transparent counting over the graph — **not an LLM**, and it is labelled that way in the UI.
 7. **Movement profile** — a preference *you* set (Standard / **Reduce horizontal effort** / **Reduce vertical effort**), never an auto-adaptation: moves in the direction you find harder cost ×2.0 in the weighted effort model, so effort-based routing (the weighted-effort figure, the recovery card's next step) steers around that axis. Press counts and optimal-press figures never change — only weighted cost does. Set it any time from the Live metrics panel; changes are logged as preferences, not adaptations.
 8. **Learning persists on-device** — the accumulated statistics behind discovery (per-destination visits/presses/excess, learned edge weights, error rates, prefix counts), your movement profile, and a session counter are kept in this browser's local storage and **accumulate across sessions**, so suggestions cite your real history ("Across 3 sessions · 4 measured runs…"). Data never leaves the device. Adaptations (pinned shortcuts) are *not* stored — each is approved per session. **Reset learning** in the Live metrics panel wipes the stored data and returns the profile to Standard.
+9. **Guide me (guided navigation)** — press **Guide me** in the Optimal path panel and AccessFlow walks you to the active task's destination one step at a time: the destination, your progress ("Step k of n"), and the next action in words ("Press ▼ (Down) to “Settings”", "Press OK to open Accessibility"), all derived live from the same Dijkstra route the panel displays. It advances when *you* perform the expected action — it never presses anything for you — and if you wander off the route it recomputes from where you actually are and logs the update. Deviations still count as difficulty signals, exactly as unguided.
+10. **Live path-effort tally** — the metrics panel prices your run as it happens: **"Your path effort: X · optimal Y"**, where X sums the weighted costs (Fitts + your error rate + learned bumps + movement profile) of the edges you *actually* traversed this run, and Y is the weighted cost of the cheapest route over the same start → goal, including the final action at the destination. Take the optimal route and X = Y; every detour pushes X above it — effort, not just press counts, is now visible live.
 
 ### Architecture at a glance
 ```mermaid
@@ -60,7 +62,8 @@ flowchart LR
 ```
 node --test        # node:test suite in tests/ — Dijkstra, Fitts monotonicity,
                    # discovery ranking, goal prediction, detection helper,
-                   # cross-session persistence round-trips
+                   # cross-session persistence round-trips, guided-route
+                   # step tracking, path-effort accumulation
 node --check js/engine.js && node --check js/app.js
 ```
 CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
@@ -108,7 +111,7 @@ JavaScript, HTML/CSS, weighted graph + Dijkstra shortest path, real-time interac
 
 ## Team & related work
 - **Arya Yaligar** — main build: engine, demo, Fire TV app, tests, video, submission.
-- **Shivaprasad** ([@shivaprasad938](https://github.com/shivaprasad938)) — parallel React Native exploration of the same idea: [accessflowai](https://github.com/shivaprasad938/accessflowai). Its directional movement-cost profiles (e.g. "Reduced Horizontal Movement") inspired the **Movement profile** preference adopted into this build's effort model.
+- **Shivaprasad** ([@shivaprasad938](https://github.com/shivaprasad938)) — parallel React Native exploration of the same idea: [accessflowai](https://github.com/shivaprasad938/accessflowai). Its directional movement-cost profiles (e.g. "Reduced Horizontal Movement") inspired the **Movement profile** preference adopted into this build's effort model, and its guided route walkthrough ("Guided Navigation") and estimated-effort analytics inspired the **Guide me** walkthrough and the **live path-effort tally** adopted here.
 
 ## License
 MIT

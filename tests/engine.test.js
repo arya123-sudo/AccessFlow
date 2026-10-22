@@ -411,6 +411,103 @@ test('persistence: resetLearning clears stored fields and the profile; hostile s
   assert.equal(bare.visits, 1, 'in-memory fallback still learns within the session');
 });
 
+test('guided navigation: guideRouteSteps yields the known Home->Subtitles action sequence; guideAdvance classifies positions', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    const start = 'home:' + defaultFocus('home');
+    const steps = guideRouteSteps(start, 'subtitles:sub_toggle', false);
+    const adv = (cur) => guideAdvance(steps, 0, cur).type;
+    const jump = guideAdvance(steps, 0, 'settings:accessibility');
+    const adv1 = guideAdvance(steps, 0, steps[0].to);
+    return { n: steps.length, kinds: steps.map(s => s.action.kind).join(','),
+             firstFrom: steps[0].from, firstTo: steps[0].to,
+             lastTo: steps[steps.length - 1].to,
+             dirs: steps.filter(s => s.action.kind === 'move').map(s => s.action.dir).join(','),
+             onExpected: adv(steps[0].to), onStay: adv(start), onOther: adv('home:movies'),
+             jumpType: jump.type, jumpIdx: jump.idx, jumpJumped: jump.jumped,
+             advIdx: adv1.idx };
+  })()`);
+  // The known optimal route: Down, Right, OK (Settings), OK (Accessibility), OK (Subtitles screen)
+  // — Dijkstra's tie-break between the two equal 2-move openings picks Down-then-Right.
+  assert.equal(out.n, 5, 'route to the toggle is 5 edges (+ the final toggle press = 6 presses total)');
+  assert.equal(out.kinds, 'move,move,select,select,select');
+  assert.equal(out.dirs, 'down,right');
+  assert.equal(out.firstFrom, 'home:search');
+  assert.equal(out.firstTo, 'home:apps');
+  assert.equal(out.lastTo, 'subtitles:sub_toggle');
+  assert.equal(out.onExpected, 'advance', 'performing the expected step advances the guide');
+  assert.equal(out.advIdx, 1);
+  assert.equal(out.onStay, 'stay', 'still at the expected position (blocked press / self action) is a stay');
+  assert.equal(out.onOther, 'reroute', 'an off-route node is classified as a deviation');
+  assert.equal(out.jumpType, 'advance', 'landing on a later route node jumps ahead');
+  assert.equal(out.jumpIdx, 3);
+  assert.equal(out.jumpJumped, 2);
+});
+
+test('path effort: traversed costs along the optimal route equal weightedRouteEffort; a detour costs more', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    const start = 'home:' + defaultFocus('home');
+    const tgt = 'subtitles:sub_toggle';
+    const steps = guideRouteSteps(start, tgt, false);
+    let along = 0;
+    for(const st of steps) along += traversedCost(st.from, st.to, st.action.kind, st.action.dir);
+    along += traversedCost(tgt, tgt, 'select');            // the final toggle press at the goal node
+    const optimal = weightedRouteEffort(start, tgt);
+    // Detour: Right then straight back Left before following the same route.
+    const wiggle = traversedCost('home:search', 'home:movies', 'move', 'right') +
+                   traversedCost('home:movies', 'home:search', 'move', 'left');
+    const detour = wiggle + along;
+    const noEdge = traversedCost('home:search', 'home:search', 'move', 'right');
+    const noDirect = traversedCost('home:search', tgt, 'select');
+    return { along, optimal, wiggle, detour, noEdge, noDirect };
+  })()`);
+  assert.ok(Math.abs(out.along - out.optimal) < 1e-9,
+    `following the optimal route must tally exactly the optimal effort (${out.along} vs ${out.optimal})`);
+  assert.ok(out.wiggle > 0, 'the out-and-back wiggle traverses real, priced edges');
+  assert.ok(out.detour > out.optimal, 'any detour pushes the path tally above optimal');
+  assert.equal(out.noEdge, 0, 'a press that traverses no graph edge costs 0');
+  assert.equal(out.noDirect, 0, 'there is no direct Home->toggle edge to price');
+});
+
+test('guided navigation: a deviation reroutes from the new node and still reaches the goal (small graph)', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    // S -right-> A -select-> T is the planned route; S -down-> B -right-> C -select-> T is the long way.
+    const adj = {
+      S: [ {to:'A', action:{kind:'move', dir:'right'}}, {to:'B', action:{kind:'move', dir:'down'}} ],
+      A: [ {to:'T', action:{kind:'select'}} ],
+      B: [ {to:'C', action:{kind:'move', dir:'right'}} ],
+      C: [ {to:'T', action:{kind:'select'}} ],
+      T: []
+    };
+    const w = () => 1;
+    const plan = dijkstraCore(adj, 'S', 'T', w).path;
+    const verdict = guideAdvance(plan, 0, 'B');            // user pressed Down instead of Right
+    const re = dijkstraCore(adj, 'B', 'T', w);             // the reroute the app computes
+    const reSteps = re.path.map(s => ({ from:s.from, to:s.to, action:s.action }));
+    // Walk the rerouted plan with guideAdvance: every expected step must advance.
+    let idx = 0, ok = true;
+    for(const st of reSteps){
+      const a = guideAdvance(reSteps, idx, st.to);
+      if(a.type !== 'advance'){ ok = false; break; }
+      idx = a.idx;
+    }
+    return { planRoute: plan.map(s => s.from + '>' + s.to).join(','),
+             verdict: verdict.type,
+             reRoute: reSteps.map(s => s.from + '>' + s.to).join(','),
+             reFirst: reSteps[0].from, reLast: reSteps[reSteps.length - 1].to,
+             walkedClean: ok, endIdx: idx, reLen: reSteps.length };
+  })()`);
+  assert.equal(out.planRoute, 'S>A,A>T');
+  assert.equal(out.verdict, 'reroute', 'pressing Down at S is a deviation from the Right-first plan');
+  assert.equal(out.reRoute, 'B>C,C>T', 'the recomputed route starts where the user actually is');
+  assert.equal(out.reFirst, 'B');
+  assert.equal(out.reLast, 'T', 'and it still terminates at the goal');
+  assert.equal(out.walkedClean, true, 'following the rerouted plan advances step by step');
+  assert.equal(out.endIdx, out.reLen);
+});
+
 test('graph integrity: every edge target exists and pinning adds a Home shortcut tile', () => {
   const ev = loadEngine();
   const out = ev(`(function(){
