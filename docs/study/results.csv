@@ -1,0 +1,6 @@
+participant,condition,taskA_presses,taskA_errors,taskA_time_s,taskB_presses,taskB_errors,taskB_time_s,taskC_presses,taskC_errors,taskC_time_s,sus_q1,sus_q2,sus_q3,sus_q4,sus_q5,sus_q6,sus_q7,sus_q8,sus_q9,sus_q10,sus_score,notes
+P1,dominant,,,,,,,,,,,,,,,,,,,,,,
+P2,dominant,,,,,,,,,,,,,,,,,,,,,,
+P3,dominant,,,,,,,,,,,,,,,,,,,,,,
+P4,non-dominant (simulation),,,,,,,,,,,,,,,,,,,,,,
+P5,non-dominant (simulation),,,,,,,,,,,,,,,,,,,,,,
