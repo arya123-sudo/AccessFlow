@@ -38,6 +38,7 @@ Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for 
 4. **Approve** — nothing changes without the user's explicit approval.
 5. **Adapt, audit & undo** — applied adaptations are recorded in an audit panel with their triggering evidence and a timestamp, and each can be **undone** (the shortcut tile, graph edge, and size mode all revert). Dismissed suggestions are recorded too.
 6. **Recover** — mid-task difficulty triggers a recovery card whose goal is *predicted* from your path so far (route-coverage matching against each destination's canonical route, blended with learned prefix counts and visit history) with the next Dijkstra step to that goal. This is transparent counting over the graph — **not an LLM**, and it is labelled that way in the UI.
+7. **Movement profile** — a preference *you* set (Standard / **Reduce horizontal effort** / **Reduce vertical effort**), never an auto-adaptation: moves in the direction you find harder cost ×2.0 in the weighted effort model, so effort-based routing (the weighted-effort figure, the recovery card's next step) steers around that axis. Press counts and optimal-press figures never change — only weighted cost does. Set it any time from the Live metrics panel; changes are logged as preferences, not adaptations.
 
 ### Architecture at a glance
 ```mermaid
@@ -102,6 +103,10 @@ docs/DEMO_GUIDE.md    How to run the demo and what to try
 
 ## Tech
 JavaScript, HTML/CSS, weighted graph + Dijkstra shortest path, real-time interaction analytics. Prototype experience for Fire TV.
+
+## Team & related work
+- **Arya Yaligar** — main build: engine, demo, Fire TV app, tests, video, submission.
+- **Shivaprasad** ([@shivaprasad938](https://github.com/shivaprasad938)) — parallel React Native exploration of the same idea: [accessflowai](https://github.com/shivaprasad938/accessflowai). Its directional movement-cost profiles (e.g. "Reduced Horizontal Movement") inspired the **Movement profile** preference adopted into this build's effort model.
 
 ## License
 MIT
