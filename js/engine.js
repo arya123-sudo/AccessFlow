@@ -789,15 +789,57 @@ function posterRowHTML(label, movies){
 function titleById(id){
   return MOVIES.concat(SHOWS, SHIVAPRASAD_CATALOG).find(m=>m.id===id) || MOVIES[0];
 }
-/* Home's two decorative rows, drawn from the combined catalog
-   (ours + Shivaprasad's six). Pure decoration: no data-id, no
-   action, aria-hidden — they can never take focus or add a node. */
+/* Home's decorative sections under the Favorite Apps grid, composed
+   like the Android TV launcher: a chips row, a wide feature panel
+   with landscape thumbnails, then landscape poster rows drawn from
+   the combined catalog (ours + Shivaprasad's six). Pure decoration:
+   no data-id, no action, aria-hidden — they can never take focus
+   or add a node. */
+function chipsHTML(){
+  const chips = [
+    {label:'AccessFlow Picks', dot:'#55D6BE', on:true},
+    {label:'Top Selling Movies', dot:'#7fb2ff'},
+    {label:'Popular Movies and Shows', dot:'#ffb86b'},
+    {label:'Trending', dot:'#ff8a7a'}
+  ];
+  let h = '<div class="chip-row" aria-hidden="true">';
+  for(const c of chips)
+    h += '<span class="fchip' + (c.on ? ' on' : '') + '"><span class="fdot" style="background:' + c.dot + '"></span>' + c.label + '</span>';
+  return h + '</div>';
+}
+function featThumbHTML(m){
+  return '<div class="feat-thumb"><div class="feat-art" style="' + posterArtStyle(m) + '">' +
+         '<span class="poster-mono">' + initialsOf(m.title) + '</span>' +
+         '<span class="feat-art-title">' + m.title + '</span></div></div>';
+}
+function featurePanelHTML(){
+  const thumbs = ['riverrun','the-last-horizon','beyond-the-stars','laugh-out-loud'].map(titleById);
+  let h = '<div class="feat-panel" aria-hidden="true"><div class="feat-txt">' +
+          '<div class="feat-eyebrow">Curated by <b>AccessFlow</b></div>' +
+          '<div class="feat-title">Trending in easy navigation</div>' +
+          '<div class="feat-desc">Shorter routes, clearer focus and guidance that adapts to you — measured from real presses, applied only with your approval.</div></div>' +
+          '<div class="feat-thumbs">';
+  for(const m of thumbs) h += featThumbHTML(m);
+  return h + '</div></div>';
+}
+/* Landscape (16:9) poster card for the Home rows — the launcher's
+   rows use landscape art with the title treatment inside the card. */
+function landPosterHTML(m){
+  return '<div class="land-card"><div class="land-art" style="' + posterArtStyle(m) + '">' +
+         '<span class="poster-mono">' + initialsOf(m.title) + '</span>' +
+         '<span class="land-title">' + m.title + '</span></div></div>';
+}
+function landRowHTML(label, movies){
+  let h = '<div class="poster-row-sec" aria-hidden="true"><div class="poster-row-label">' + label + '</div><div class="poster-row land">';
+  for(const m of movies) h += landPosterHTML(m);
+  return h + '</div></div>';
+}
 function homeRowsHTML(){
-  const topSelling = ['riverrun','the-last-horizon','nightcircuit','beyond-the-stars','emberfalls'];
-  const recent     = ['desertlight','city-of-dreams','laugh-out-loud','lastsignal','family-time'];
-  return '<div class="poster-rows">' +
-         posterRowHTML('Top Selling Movies', topSelling.map(titleById)) +
-         posterRowHTML('Recently Added', recent.map(titleById)) + '</div>';
+  const topSelling = ['riverrun','the-last-horizon','nightcircuit','beyond-the-stars','emberfalls','hidden-truth'];
+  const recent     = ['desertlight','city-of-dreams','laugh-out-loud','lastsignal','family-time','harborsky'];
+  return chipsHTML() + featurePanelHTML() + '<div class="poster-rows">' +
+         landRowHTML('Top selling movies', topSelling.map(titleById)) +
+         landRowHTML('Recently Added', recent.map(titleById)) + '</div>';
 }
 /* Home hero banner — DECORATIVE ONLY (streaming-service look, after
    Shivaprasad's RN prototype). It renders no screen item: no id, no
@@ -813,24 +855,20 @@ function heroHTML(){
     'radial-gradient(90% 130% at 82% 0%, hsla(' + h2 + ',85%,68%,.80), rgba(0,0,0,0) 55%),' +
     'radial-gradient(70% 90% at 8% 108%, hsla(' + h + ',80%,55%,.55), rgba(0,0,0,0) 60%),' +
     'linear-gradient(150deg, hsl(' + h + ',64%,44%) 0%, hsl(' + h + ',60%,27%) 58%, hsl(' + h2 + ',64%,12%) 100%)';
-  /* Full-bleed hero (Google TV home): the art fills the screen width
-     and the top of the TV area; a slim decorative strip (search glyph
-     + text tabs) rides on the art, the featured treatment sits
-     bottom-left, and the focusable cards begin over its fade. All of
-     it is aria-hidden decoration — no items, no focus, no edges. */
+  /* Full-bleed hero (Android TV launcher home): the art fills the
+     screen width and the top of the TV area; the TV's own top bar
+     (Search / Home / Shop / Discover / Apps) rides over the art, the
+     featured treatment — small "Featured" label, big title, one-line
+     tagline, quiet meta line — sits bottom-left, and the focusable
+     Favorite Apps cards begin over its fade. All of it is
+     aria-hidden decoration — no items, no focus, no edges. */
   return '<div class="hero" aria-hidden="true" style="background:' + backdrop + '">' +
-         '<div class="hero-strip"><span class="hsearch">' + ICONS.search + '</span>' +
-         '<span class="htab on">For You</span><span class="htab">Movies</span>' +
-         '<span class="htab">Shows</span><span class="htab">Apps</span></div>' +
          '<div class="hero-block">' +
          '<div class="hero-kicker">Featured</div>' +
          '<div class="hero-title">' + m.title + '</div>' +
-         '<div class="hero-chips"><span class="mchip match">' + mp.match + '% Match</span>' +
-         '<span class="mchip">' + mp.year + '</span>' +
-         '<span class="mchip">' + mp.duration + '</span>' +
-         '<span class="mchip genre">' + mp.genre + '</span></div>' +
          '<div class="hero-syn">' + synopsisFor(m) + '</div>' +
-         '<div class="hero-play">' + ICONS.play + 'Play</div></div></div>';
+         '<div class="hero-meta-line"><span class="hmatch">' + mp.match + '% Match</span> &nbsp;·&nbsp; ' + mp.year + ' &nbsp;·&nbsp; ' + mp.duration + ' &nbsp;·&nbsp; ' + mp.genre + ' &nbsp;·&nbsp; ' + mp.cert + '</div>' +
+         '</div></div>';
 }
 /* Detail-page rich blocks — all decoration around the two REAL
    detail items (Play / Watchlist), which are rendered separately
@@ -877,13 +915,23 @@ function renderTV(){
   tvScreenEl.classList.toggle('large', state.adapted.large);
   tvScreenEl.classList.toggle('ts-large', state.settings.textSize==='Large');
   tvScreenEl.classList.toggle('ts-xl', state.settings.textSize==='Extra Large');
+  /* Launcher chrome (presentation only): on Home the TV top bar
+     floats over the full-bleed hero; the bar's decorative tabs
+     underline the section the user is in. Neither touches items,
+     focus or the graph. */
+  tvScreenEl.classList.toggle('on-home', state.screen==='home');
+  if(tvScreenEl.querySelectorAll){
+    const tabFor = { home:'home', movies:'discover', shows:'discover', apps:'apps' }[state.screen] || 'home';
+    tvScreenEl.querySelectorAll('.tvtab').forEach(t=>t.classList.toggle('on', t.dataset.tab===tabFor));
+  }
 
   let html = '';
   if(def.layout==='grid'){
     if(state.screen==='home') html += heroHTML();
     else html += '<h2 class="tv-title">' + def.title + '</h2>';
     if(def.hint) html += '<p class="tv-hint">' + def.hint + '</p>';
-    html += '<div class="tiles cols' + def.cols + '">';
+    if(state.screen==='home') html += '<div class="fav-label" aria-hidden="true">Favorite Apps</div>';
+    html += '<div class="tiles cols' + def.cols + (state.screen==='home' ? ' home-apps' : '') + '">';
     for(const it of def.items)
       html += '<div class="tile' + (it.id===state.focusId?' focused':'') + (it.shortcut?' shortcut':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
     html += '</div>';
