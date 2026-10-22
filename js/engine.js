@@ -50,10 +50,16 @@ const state = {
   settings:{ subtitles:false, highContrast:false, textSize:'Standard', voiceGuide:false,
              dialogueBoost:false, wifi:true, brightness:'Medium', resolution:'1080p',
              volume:'Medium', subSize:'Medium', subStyle:'Default' },
-  adapted:{ pinned:false, large:false },
+  adapted:{ pins:[], large:false },   // pins: destination ids with a pinned Home shortcut
   decision:null,          // null | 'approved' | 'dismissed'
   suggestionShown:false,
-  weights:{},             // edgeKey -> added weight
+  weights:{},             // edgeKey -> added weight (learned difficulty bumps)
+  edgeOutcomes:{},        // actionClass -> {traversals, errors} for the per-user difficulty multiplier
+  destStats:{},           // destId -> {visits, totalPresses, totalExcess, difficultyEvents}
+  prefixCounts:{},        // learned: path-prefix key -> {destId: count} from completed runs
+  adaptations:[],         // audit trail: {id, kind, destId, label, evidence, time, status}
+  pendingSuggestion:null, // data behind the currently displayed suggestion card
+  currentPrediction:null, // last goal prediction used by the recovery card
   phase:'task1',          // task1 | adapt | task2 | results | task3 | done
   recoverCooldownUntil:0
 };
@@ -65,18 +71,39 @@ const pageStart = performance.now();
 function freshRun(task){
   return { task:task, active:true, started:false, startT:0, endT:0, lastPressT:0,
            presses:0, errors:0, backtracks:0, reversals:0, hesitations:0, events:0,
-           lastDir:null, selectSince:true, visited:new Set() };
+           lastDir:null, selectSince:true, visited:new Set(),
+           pathSeq:[],              // ordered node keys visited this run (for goal prediction)
+           destId:(task==='task3' ? 'riverrun' : 'subtitles'),
+           optStart:null };         // optimal presses from Home at run start (for excess cost)
 }
 run = freshRun('task1');
 
 /* ---------------- screen definitions ---------------- */
+/* ---------------- destinations & shortcut discovery ----------------
+   A destination is anything a user repeatedly travels to. Shortcut
+   discovery (below) is purely data-driven: it ranks destinations from
+   measured run statistics, it is not aimed at any pre-chosen target. */
+function pinTileId(destId){ return destId==='subtitles' ? 'sub_shortcut' : 'pin_' + destId; }
+
+const DESTINATIONS = [
+  { id:'subtitles', name:'Subtitles', node:'subtitles:sub_toggle',
+    tile:()=>({ id:pinTileId('subtitles'), label:'Subtitles', sub:'Your shortcut', icon:'cc',
+                shortcut:true, action:{type:'nav', to:'subtitles'} }) },
+  { id:'riverrun', name:"River Run (Play)", node:'detail:play',
+    tile:()=>({ id:pinTileId('riverrun'), label:'River Run', sub:'Your shortcut · Movie', poster:MOVIES[0],
+                shortcut:true, action:{type:'openDetail', movie:MOVIES[0], kind:'Movie'} }) }
+];
+function destinationById(id){ return DESTINATIONS.find(d=>d.id===id) || null; }
+
 function homeItems(){
   const items = [];
   let y = 0;
-  if(state.adapted.pinned){
-    items.push({id:'sub_shortcut', label:'Subtitles', sub:'Your shortcut', icon:'cc',
-                x:0, y:0, shortcut:true, action:{type:'nav', to:'subtitles'}});
-    y = 1;
+  if(state.adapted.pins.length){
+    state.adapted.pins.forEach((destId, i)=>{
+      const dest = destinationById(destId);
+      if(dest) items.push(Object.assign(dest.tile(), {x:i%3, y:Math.floor(i/3)}));
+    });
+    y = Math.ceil(state.adapted.pins.length / 3);
   }
   const rowA = [
     {id:'search', label:'Search',   icon:'search', action:{type:'noop', msg:'Search is decorative in this prototype — the route that matters today is Settings.'}},
@@ -176,48 +203,131 @@ function neighborFor(items, item, dir){
   return best;
 }
 
+/* ---------------- effort model (Fitts's law + learned difficulty) ----------------
+   Weighted edge cost, honestly labelled in the UI and docs:
+     weight = ( PRESS_BASE + fitts ) x difficultyMultiplier + learnedBump
+     fitts  = log2( distanceSteps / targetSize + 1 )     (Fitts's law, Shannon form)
+   - distanceSteps: grid distance in focus steps between the two tiles
+     (1 for Select/Back/Home, which act on the already-focused target).
+   - targetSize: per-item size factor — posters/list rows are bigger than
+     small grid tiles; enlarged-focus mode multiplies every size, which
+     measurably lowers the Fitts component.
+   - difficultyMultiplier: 1 + this user's measured error rate for that
+     action class (moves left, moves right, selects, ...), updated live
+     from traversals vs difficulty events.
+   - learnedBump: additive weight added to a specific edge whenever a
+     difficulty event happens on it (the original re-weighting behaviour).
+   Unweighted cost is always exactly 1 per press, so "optimal presses"
+   stays a pure, honest press count.                                        */
+const PRESS_BASE = 1;
+
+function itemSizeFactor(item){
+  if(!item) return 1;
+  if(item.poster) return 1.35;              // movie/show posters are large targets
+  if(item.shortcut) return 1.3;             // pinned shortcuts are prominent tiles
+  return 1;
+}
+function effectiveTargetSize(item, largeMode){
+  let s = itemSizeFactor(item);
+  if(item && item._listRow) s *= 1.15;      // full-width list rows are easier to land on
+  if(largeMode) s *= 1.5;                   // enlarged-focus mode: bigger targets, lower cost
+  return s;
+}
+function fittsCost(distanceSteps, targetSize){
+  const d = Math.max(0, distanceSteps || 0);
+  const s = Math.max(0.05, targetSize || 1);
+  return Math.log2(d / s + 1);
+}
+function actionClass(action){ return action.kind + (action.dir || ''); }
+function difficultyMultiplier(action){
+  const st = state.edgeOutcomes[actionClass(action)];
+  if(!st || !st.traversals) return 1;
+  const rate = st.errors / st.traversals;             // this user's error rate on similar edges
+  return 1 + Math.min(0.9, rate);
+}
+function combineWeight(fitts, multiplier, learnedBump){
+  return (PRESS_BASE + fitts) * multiplier + (learnedBump || 0);
+}
+function noteTraversal(action){
+  const c = actionClass(action);
+  const st = state.edgeOutcomes[c] || (state.edgeOutcomes[c] = {traversals:0, errors:0});
+  st.traversals++;
+}
+function noteEdgeError(action){
+  const c = actionClass(action);
+  const st = state.edgeOutcomes[c] || (state.edgeOutcomes[c] = {traversals:0, errors:0});
+  st.errors++;
+}
+function isReversal(prevDir, dir, selectSince, oppMap){
+  return !!(prevDir && oppMap[prevDir]===dir && !selectSince);
+}
+function fittsForEdge(edge){
+  if(!edge) return 0;
+  if(edge.action.kind==='move' && edge.fromItem && edge.toItem){
+    const d = Math.abs(edge.toItem.x - edge.fromItem.x) + Math.abs(edge.toItem.y - edge.fromItem.y);
+    return fittsCost(Math.max(1, d), effectiveTargetSize(edge.toItem, state.adapted.large));
+  }
+  // Select / Back / Home act on the focused item: nominal 1-step acquisition.
+  return fittsCost(1, effectiveTargetSize(edge.fromItem, state.adapted.large));
+}
+function userErrorRate(){
+  let t = 0, e = 0;
+  for(const c of Object.values(state.edgeOutcomes)){ t += c.traversals; e += c.errors; }
+  return t ? e / t : 0;
+}
+
 /* ---------------- graph + Dijkstra ---------------- */
 function buildGraph(){
   const screens = getScreens();
   const adj = {};
-  const add = (from, to, action)=>{ (adj[from] = adj[from] || []).push({to:to, action:action}); };
+  const itemOf = (sid, iid)=>{ const d = screens[sid]; return d ? (d.items.find(i=>i.id===iid) || d.items[0]) : null; };
+  const add = (from, to, action, fromItem, toItem)=>{
+    (adj[from] = adj[from] || []).push({to:to, action:action, fromItem:fromItem||null, toItem:toItem||null});
+  };
   for(const sid of Object.keys(screens)){
     const def = screens[sid];
-    for(const item of def.items){
+    const isList = def.layout==='list';
+    for(const rawItem of def.items){
+      const item = isList ? Object.assign({}, rawItem, {_listRow:true}) : rawItem;
       const key = sid + ':' + item.id;
       for(const dir of ['up','down','left','right']){
         const nb = neighborFor(def.items, item, dir);
-        if(nb) add(key, sid + ':' + nb.id, {kind:'move', dir:dir});
+        if(nb) add(key, sid + ':' + nb.id, {kind:'move', dir:dir}, item, isList ? Object.assign({}, nb, {_listRow:true}) : nb);
       }
       const a = item.action;
-      if(a.type==='nav')        add(key, a.to + ':' + defaultFocus(a.to), {kind:'select'});
-      else if(a.type==='openDetail') add(key, 'detail:play', {kind:'select'});
-      else if(a.type==='play')  add(key, 'player:playpause', {kind:'select'});
-      else                      add(key, key, {kind:'select'});
+      if(a.type==='nav')        add(key, a.to + ':' + defaultFocus(a.to), {kind:'select'}, item, itemOf(a.to, defaultFocus(a.to)));
+      else if(a.type==='openDetail') add(key, 'detail:play', {kind:'select'}, item, itemOf('detail','play'));
+      else if(a.type==='play')  add(key, 'player:playpause', {kind:'select'}, item, itemOf('player','playpause'));
+      else                      add(key, key, {kind:'select'}, item, item);
       if(PARENT[sid]){
         const p = PARENT[sid];
         let entry = ENTRY_ITEM[sid];
         if(sid==='detail') entry = state.detail ? state.detail.id : 'riverrun';
         if(sid==='subtitles' && p==='accessibility') entry = 'subtitles';
-        add(key, p + ':' + entry, {kind:'back'});
+        add(key, p + ':' + entry, {kind:'back'}, item, itemOf(p, entry));
       }
-      if(sid!=='home') add(key, 'home:' + defaultFocus('home'), {kind:'home'});
+      if(sid!=='home') add(key, 'home:' + defaultFocus('home'), {kind:'home'}, item, itemOf('home', defaultFocus('home')));
     }
   }
   return adj;
 }
 
-function edgeWeight(from, action, weighted){
+function edgeWeight(from, action, weighted, edge){
   if(!weighted) return 1;
-  return 1 + (state.weights[from + '|' + action.kind + (action.dir||'')] || 0);
+  const learned = state.weights[from + '|' + actionClass(action)] || 0;
+  return combineWeight(fittsForEdge(edge), difficultyMultiplier(action), learned);
 }
 function bumpWeight(fromKey, action){
-  const k = fromKey + '|' + action.kind + (action.dir||'');
+  const k = fromKey + '|' + actionClass(action);
   state.weights[k] = (state.weights[k]||0) + 0.6;
+  noteEdgeError(action);
 }
 
-function dijkstra(start, target, weighted){
-  const adj = buildGraph();
+/* Pure Dijkstra core over an adjacency map {node: [{to, action, ...}]},
+   with weightFn(fromNode, edge) -> number. The app-facing dijkstra()
+   below is a thin wrapper that builds the live graph and plugs in the
+   effort model. The test suite exercises THIS function directly. */
+function dijkstraCore(adj, start, target, weightFn){
   const dist = {}, prev = {}, Q = new Set([start]);
   dist[start] = 0;
   while(Q.size){
@@ -227,7 +337,7 @@ function dijkstra(start, target, weighted){
     Q.delete(u);
     if(u===target) break;
     for(const e of (adj[u]||[])){
-      const w = edgeWeight(u, e.action, weighted);
+      const w = weightFn(u, e);
       const nd = dist[u] + w;
       if(dist[e.to]===undefined || nd < dist[e.to]){
         dist[e.to] = nd; prev[e.to] = {from:u, action:e.action}; Q.add(e.to);
@@ -243,6 +353,109 @@ function dijkstra(start, target, weighted){
     cur = p.from;
   }
   return { dist:dist[target], path:path };
+}
+
+function dijkstra(start, target, weighted){
+  const adj = buildGraph();
+  return dijkstraCore(adj, start, target, (u, e)=>edgeWeight(u, e.action, weighted, e));
+}
+
+/* ---------------- shortcut discovery (data-driven) ----------------
+   Ranks destinations from measured run statistics:
+     score = visits x average excess presses per visit   (= total excess)
+   A destination is a candidate when it is not already pinned and it
+   either cost the user excess presses or a pin would shorten its
+   optimal route by at least 2 presses. Nothing here knows in advance
+   which destination "should" win — the demo's Subtitles result falls
+   out of the numbers, and a costly movie routine would win instead.  */
+function optimalFromHomeFor(node){
+  return dijkstra('home:' + defaultFocus('home'), node, false).dist + 1;
+}
+function optimalWithPinFor(dest){
+  const saved = state.adapted.pins.slice();
+  if(!saved.includes(dest.id)) state.adapted.pins = saved.concat(dest.id);
+  const v = optimalFromHomeFor(dest.node);
+  state.adapted.pins = saved;
+  return v;
+}
+function rankShortcutCandidates(stats, pinnedIds){
+  const pinned = pinnedIds || [];
+  const out = [];
+  for(const dest of DESTINATIONS){
+    if(pinned.includes(dest.id)) continue;
+    const s = stats[dest.id] || {visits:0, totalPresses:0, totalExcess:0, difficultyEvents:0};
+    const avgExcess = s.visits ? s.totalExcess / s.visits : 0;
+    const score = s.visits * avgExcess;
+    const optNow = optimalFromHomeFor(dest.node);
+    const optPinned = optimalWithPinFor(dest);
+    const saving = optNow - optPinned;
+    if(score > 0 || saving >= 2)
+      out.push({ dest:dest, visits:s.visits, totalPresses:s.totalPresses, totalExcess:s.totalExcess,
+                 difficultyEvents:s.difficultyEvents, avgExcess:avgExcess, score:score,
+                 optNow:optNow, optPinned:optPinned, saving:saving });
+  }
+  out.sort((a,b)=> (b.score - a.score) || (b.saving - a.saving));
+  return out;
+}
+
+/* ---------------- goal prediction (prefix-based, algorithmic) ----------------
+   Predicts the user's likely destination from:
+   (a) PREFIX evidence — how much of each destination's canonical route
+       (its Dijkstra path from Home) the user's path so far follows, in
+       order (a subsequence match, so overshoot detours don't break it);
+   (b) LEARNED prefixes — prefix->destination counts recorded from this
+       user's own completed runs;
+   (c) HISTORY prior — how often the user has visited each destination.
+   This is transparent counting/statistics over the graph — it is NOT
+   an LLM and makes no language-model claim anywhere.                  */
+function canonicalRouteNodes(dest){
+  const res = dijkstra('home:' + defaultFocus('home'), dest.node, false);
+  const nodes = ['home:' + defaultFocus('home')];
+  for(const st of res.path) nodes.push(st.to);
+  return nodes;
+}
+/* Route coverage: longest-common-subsequence length between the
+   destination's canonical route and the user's actual path, divided
+   by the canonical route length. LCS (not a strict prefix match) so
+   that an overshoot detour early on does not zero out the evidence —
+   what matters is how much of the usual route the user has covered,
+   in order. */
+function subsequenceRatio(canonical, actual){
+  if(!canonical.length || !actual.length) return 0;
+  let prev = new Array(actual.length + 1).fill(0);
+  for(let i = 1; i <= canonical.length; i++){
+    const cur = new Array(actual.length + 1).fill(0);
+    for(let j = 1; j <= actual.length; j++)
+      cur[j] = canonical[i-1] === actual[j-1] ? prev[j-1] + 1 : Math.max(prev[j], cur[j-1]);
+    prev = cur;
+  }
+  return prev[actual.length] / canonical.length;
+}
+function predictGoal(pathSeq, stats, prefixCounts){
+  const totalVisits = DESTINATIONS.reduce((a,d)=> a + ((stats[d.id]||{}).visits || 0), 0);
+  const prefixKey = (pathSeq || []).join('>');
+  const learnedForPrefix = (prefixCounts && prefixKey) ? (prefixCounts[prefixKey] || null) : null;
+  const learnedTotal = learnedForPrefix ? Object.values(learnedForPrefix).reduce((a,b)=>a+b,0) : 0;
+  const scored = DESTINATIONS.map(dest=>{
+    const canon = canonicalRouteNodes(dest);
+    const prefixScore = subsequenceRatio(canon, pathSeq || []);
+    const histScore = totalVisits ? ((stats[dest.id]||{}).visits || 0) / totalVisits : 0;
+    const learnScore = learnedTotal ? ((learnedForPrefix[dest.id] || 0) / learnedTotal) : 0;
+    const raw = 0.5 * prefixScore + 0.3 * histScore + 0.2 * learnScore;
+    return { dest:dest, prefixScore:prefixScore, histScore:histScore, learnScore:learnScore, raw:raw };
+  });
+  const totalRaw = scored.reduce((a,s)=>a+s.raw, 0);
+  for(const s of scored) s.prob = totalRaw ? s.raw / totalRaw : 1 / scored.length;
+  scored.sort((a,b)=> b.prob - a.prob);
+  return scored;
+}
+function learnPrefixes(pathSeq, destId){
+  if(!pathSeq || !pathSeq.length) return;
+  for(let n = 1; n <= pathSeq.length; n++){
+    const key = pathSeq.slice(0, n).join('>');
+    const bucket = state.prefixCounts[key] || (state.prefixCounts[key] = {});
+    bucket[destId] = (bucket[destId] || 0) + 1;
+  }
 }
 
 function currentTarget(){
@@ -275,7 +488,7 @@ function itemInner(it){
 function renderTV(){
   const def = currentDef();
   $('tvScreenName').textContent = state.screen==='player' && state.detail ? state.detail.title : def.title;
-  $('adaptBadge').hidden = !(state.adapted.pinned || state.adapted.large);
+  $('adaptBadge').hidden = !(state.adapted.pins.length || state.adapted.large);
   $('ccBadge').hidden = !state.settings.subtitles;
   tvScreenEl.classList.toggle('hc', state.settings.highContrast);
   tvScreenEl.classList.toggle('large', state.adapted.large);

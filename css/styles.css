@@ -221,6 +221,20 @@
       .bar-fill.run2{ background:var(--amber); }
       .bar-row .v{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
 
+      /* ---------- adaptations audit ---------- */
+      .adapt-entry{
+        display:flex; align-items:center; gap:10px; background:var(--panel2);
+        border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:8px 0;
+      }
+      .adapt-entry .txt{ flex:1; font-size:14px; }
+      .adapt-entry .txt b{ font-size:14.5px; }
+      .adapt-entry .txt span{ display:block; font-size:12.5px; color:var(--muted); margin-top:2px; }
+      .adapt-entry .txt span.atime{ color:var(--faint); font-size:11.5px; font-variant-numeric:tabular-nums; }
+      .atag{ display:inline-block !important; font-size:11px; font-weight:800; border-radius:999px; padding:2px 8px; margin-left:6px; vertical-align:2px; }
+      .atag.applied{ background:#0e3a22; color:#8ff0b6; }
+      .atag.undone{ background:#3a2a10; color:#ffcf87; }
+      .atag.dismissed{ background:#2a3242; color:#a7b6c8; }
+
       /* ---------- explainer ---------- */
       .steps{ display:grid; gap:10px; }
       @media (min-width:760px){ .steps{ grid-template-columns:repeat(5,1fr); } }

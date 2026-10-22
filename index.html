@@ -48,11 +48,11 @@
             <p id="suggestText"></p>
             <div id="suggestFindings"></div>
             <div class="adapt-row">
-              <div class="txt"><b>Pin a Subtitles shortcut on Home</b><span id="pinEffect">Adds a direct Home → Subtitles route to the navigation graph.</span></div>
-              <button class="switch" id="pinSwitch" type="button" aria-pressed="true" aria-label="Pin Subtitles shortcut"></button>
+              <div class="txt"><b id="pinTitle">Pin a shortcut on Home</b><span id="pinEffect">Discovered from your measured runs.</span></div>
+              <button class="switch" id="pinSwitch" type="button" aria-pressed="true" aria-label="Pin discovered shortcut"></button>
             </div>
-            <div class="adapt-row">
-              <div class="txt"><b>Enlarge focus &amp; targets</b><span>Bigger tiles, labels and a stronger focus ring on the TV.</span></div>
+            <div class="adapt-row" id="largeRow">
+              <div class="txt"><b>Enlarge focus &amp; targets</b><span id="largeEffect">Bigger tiles, labels and a stronger focus ring on the TV.</span></div>
               <button class="switch" id="largeSwitch" type="button" aria-pressed="true" aria-label="Enlarge focus and targets"></button>
             </div>
             <div class="ac-actions">
@@ -131,15 +131,23 @@
         </div>
       </section>
 
+      <!-- ADAPTATIONS AUDIT -->
+      <section class="block panel" id="adaptPanel" style="margin-top:14px;">
+        <h3 style="font-size:17px;">Adaptations <span class="sub" style="color:var(--faint);font-weight:500;font-size:12.5px;">— history, evidence &amp; undo</span></h3>
+        <div id="adaptList">
+          <p class="empty-note">No adaptations yet. Every suggestion, approval, dismissal and undo is recorded here — your audit trail.</p>
+        </div>
+      </section>
+
       <!-- HOW IT WORKS -->
       <section class="block">
         <h3>How AccessFlow works</h3>
         <div class="steps">
           <div class="step"><div class="num">1</div><h4>Detect</h4><p>Every remote press is logged with a timestamp. Overshoots, direction reversals, backtracks, wrong selections and long hesitations are flagged as difficulty signals.</p></div>
-          <div class="step"><div class="num">2</div><h4>Optimize</h4><p>The TV interface is a weighted graph — every (screen, focused tile) is a node, every press an edge. Edges where you struggle gain weight; Dijkstra recomputes the cheapest route to your goal.</p></div>
-          <div class="step"><div class="num">3</div><h4>Suggest</h4><p>When friction crosses a threshold, AccessFlow proposes a concrete fix — like pinning a Subtitles shortcut on Home, which adds a shorter edge to the graph.</p></div>
-          <div class="step"><div class="num">4</div><h4>You approve</h4><p>Nothing ever changes silently. Each adaptation is explained and applied only when you tap Approve.</p></div>
-          <div class="step"><div class="num">5</div><h4>Adapt</h4><p>The interface reshapes around your abilities, the optimal path shortens, and the next run is measured against the first — effort and errors drop, provably.</p></div>
+          <div class="step"><div class="num">2</div><h4>Optimize</h4><p>The TV interface is a weighted graph — every (screen, focused tile) is a node, every press an edge. Edge costs combine a Fitts's-law movement cost (distance ÷ target size) with your personal error rate; Dijkstra recomputes the cheapest route to your goal.</p></div>
+          <div class="step"><div class="num">3</div><h4>Discover &amp; suggest</h4><p>AccessFlow ranks destinations by visits × excess cost from your own measured runs and proposes pinning a shortcut to the winner — nothing is pre-chosen. Recovery uses prefix-based goal prediction over the same graph. No LLM; it's counting and graph math, labelled as such.</p></div>
+          <div class="step"><div class="num">4</div><h4>You approve</h4><p>Nothing ever changes silently. Each adaptation is explained with its evidence and applied only when you tap Approve.</p></div>
+          <div class="step"><div class="num">5</div><h4>Adapt &amp; undo</h4><p>Applied adaptations are listed with their evidence in the audit panel above — and every one can be undone, reverting the interface and the graph.</p></div>
         </div>
       </section>
 
