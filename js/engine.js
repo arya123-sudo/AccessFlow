@@ -52,7 +52,7 @@ const SHIVAPRASAD_CATALOG = [
   {id:'beyond-the-stars', title:'Beyond the Stars', meta:'Sci-Fi • 2h 05m',    hue:355},
   {id:'laugh-out-loud',   title:'Laugh Out Loud',   meta:'Comedy • 1h 30m',    hue:45},
   {id:'hidden-truth',     title:'Hidden Truth',     meta:'Thriller • 1h 55m',  hue:350},
-  {id:'family-time',      title:'Family Time',      meta:'Family • 1h 40m',    hue:40}
+  {id:'family-time',      title:'Family Time',      meta:'Family • 1h 40m',    hue:40, pos:'center 18%'}
 ];
 
 const state = {
@@ -760,24 +760,24 @@ function detailMetaParts(d){
   const quality = (hashTitle(d.title) % 4 === 0) ? 'HD' : '4K';
   return { genre:genre, duration:duration, year:year, match:matchForTitle(d.title), cert:cert, quality:quality };
 }
-/* Layered CSS-art scenery for a title: an ember glow, a gold wash
-   and a deep hue slope — no images, just gradients in the title's hue. */
+/* Photographic key art per title (v12): a real stock photo from
+   assets/posters/<id>.jpg (Pexels, free license — credits in
+   assets/posters/CREDITS.md), center-cropped by CSS (cover), with a
+   subtle bottom shade for title legibility and a dark gradient as
+   the loading fallback behind the image. */
 function posterArtStyle(m){
-  const h = m.hue, h2 = (m.hue + 45) % 360;
   return 'background:' +
-    'radial-gradient(120% 90% at 15% 0%, hsla(' + h + ',80%,70%,.55), rgba(0,0,0,0) 55%),' +
-    'radial-gradient(95% 70% at 88% 22%, hsla(' + h2 + ',75%,52%,.50), rgba(0,0,0,0) 62%),' +
-    'linear-gradient(158deg, hsl(' + h + ',64%,46%) 0%, hsl(' + h + ',60%,30%) 55%, hsl(' + h2 + ',62%,13%) 100%)';
+    'linear-gradient(165deg, rgba(5,5,5,0) 52%, rgba(5,5,5,.42) 100%),' +
+    'url(assets/posters/' + m.id + '.jpg) ' + (m.pos || 'center') + ' / cover no-repeat,' +
+    'linear-gradient(160deg, #1b1b21 0%, #0b0b0f 100%)';
 }
 function initialsOf(title){ return title.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 function posterHTML(m, big){
-  return '<div class="' + (big?'detail-poster':'poster') + '" style="' + posterArtStyle(m) + '">' +
-         '<span class="poster-mono">' + initialsOf(m.title) + '</span></div>';
+  return '<div class="' + (big?'detail-poster':'poster') + '" style="' + posterArtStyle(m) + '"></div>';
 }
 /* Decorative poster card used by the Home rows and More Like This. */
 function rowPosterHTML(m){
-  return '<div class="row-poster"><div class="row-poster-art" style="' + posterArtStyle(m) + '">' +
-         '<span class="poster-mono">' + initialsOf(m.title) + '</span></div>' +
+  return '<div class="row-poster"><div class="row-poster-art" style="' + posterArtStyle(m) + '"></div>' +
          '<div class="row-poster-title">' + m.title + '</div>' +
          '<div class="row-poster-meta">' + m.meta + '</div></div>';
 }
@@ -798,9 +798,9 @@ function titleById(id){
 function chipsHTML(){
   const chips = [
     {label:'AccessFlow Picks', dot:'#e50914', on:true},
-    {label:'Top Selling Movies', dot:'#ffc61a'},
-    {label:'Popular Movies and Shows', dot:'#ff7847'},
-    {label:'Trending', dot:'#ff8a7a'}
+    {label:'Top Selling Movies', dot:'#ffffff'},
+    {label:'Popular Movies and Shows', dot:'#8c8c93'},
+    {label:'Trending', dot:'#e50914'}
   ];
   let h = '<div class="chip-row" aria-hidden="true">';
   for(const c of chips)
@@ -809,7 +809,6 @@ function chipsHTML(){
 }
 function featThumbHTML(m){
   return '<div class="feat-thumb"><div class="feat-art" style="' + posterArtStyle(m) + '">' +
-         '<span class="poster-mono">' + initialsOf(m.title) + '</span>' +
          '<span class="feat-art-title">' + m.title + '</span></div></div>';
 }
 function featurePanelHTML(){
@@ -826,7 +825,6 @@ function featurePanelHTML(){
    rows use landscape art with the title treatment inside the card. */
 function landPosterHTML(m){
   return '<div class="land-card"><div class="land-art" style="' + posterArtStyle(m) + '">' +
-         '<span class="poster-mono">' + initialsOf(m.title) + '</span>' +
          '<span class="land-title">' + m.title + '</span></div></div>';
 }
 function landRowHTML(label, movies){
@@ -849,12 +847,14 @@ function homeRowsHTML(){
 function heroHTML(){
   const m = MOVIES[0];
   const mp = detailMetaParts(m);
-  const h = m.hue, h2 = (m.hue + 45) % 360;
+  /* Netflix treatment (v12): the featured title's photographic
+     backdrop (landscape crop of the River Run photo), darkened by
+     the same left scrim + a bottom fade; dark gradient fallback. */
   const backdrop =
     'linear-gradient(100deg, rgba(5,5,5,.94) 24%, rgba(5,5,5,.58) 56%, rgba(5,5,5,.10) 100%),' +
-    'radial-gradient(90% 130% at 82% 0%, hsla(' + h2 + ',85%,68%,.80), rgba(0,0,0,0) 55%),' +
-    'radial-gradient(70% 90% at 8% 108%, hsla(' + h + ',80%,55%,.55), rgba(0,0,0,0) 60%),' +
-    'linear-gradient(150deg, hsl(' + h + ',64%,44%) 0%, hsl(' + h + ',60%,27%) 58%, hsl(' + h2 + ',64%,12%) 100%)';
+    'linear-gradient(0deg, rgba(5,5,5,.55) 0%, rgba(5,5,5,0) 45%),' +
+    'url(assets/posters/river-run-backdrop.jpg) center / cover no-repeat,' +
+    'linear-gradient(150deg, #1a1214 0%, #0b0b0f 100%)';
   /* Full-bleed hero (Android TV launcher home): the art fills the
      screen width and the top of the TV area; the TV's own top bar
      (Search / Home / Shop / Discover / Apps) rides over the art, the
@@ -867,6 +867,12 @@ function heroHTML(){
          '<div class="hero-kicker">Featured</div>' +
          '<div class="hero-title">' + m.title + '</div>' +
          '<div class="hero-syn">' + synopsisFor(m) + '</div>' +
+         /* Decorative Netflix-style action pills — spans inside the
+            aria-hidden hero: no id, no data-id, never focusable. */
+         '<div class="hero-actions">' +
+         '<span class="hero-pill play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>Play</span>' +
+         '<span class="hero-pill info"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>More Info</span>' +
+         '</div>' +
          '<div class="hero-meta-line"><span class="hmatch">' + mp.match + '% Match</span> &nbsp;·&nbsp; ' + mp.year + ' &nbsp;·&nbsp; ' + mp.duration + ' &nbsp;·&nbsp; ' + mp.genre + ' &nbsp;·&nbsp; ' + mp.cert + '</div>' +
          '</div></div>';
 }
@@ -874,18 +880,19 @@ function heroHTML(){
    detail items (Play / Watchlist), which are rendered separately
    below with their original ids, order and actions. */
 function backdropStyle(d){
-  const h = d.hue, h2 = (d.hue + 45) % 360;
+  /* The title's own key-art photo (same file as its poster,
+     CSS-cropped to the landscape backdrop), under the fade-to-black
+     scrim the detail content flows over; dark gradient fallback. */
   return 'background:' +
     'linear-gradient(180deg, rgba(5,5,5,.16) 0%, rgba(5,5,5,.04) 38%, rgba(5,5,5,.86) 86%, #0b0b0f 100%),' +
-    'radial-gradient(85% 120% at 80% 4%, hsla(' + h2 + ',85%,67%,.85), rgba(0,0,0,0) 55%),' +
-    'radial-gradient(75% 95% at 10% 22%, hsla(' + h + ',78%,55%,.55), rgba(0,0,0,0) 62%),' +
-    'linear-gradient(155deg, hsl(' + h + ',66%,45%) 0%, hsl(' + h + ',60%,27%) 55%, hsl(' + h2 + ',64%,12%) 100%)';
+    'url(assets/posters/' + d.id + '.jpg) ' + (titleById(d.id).pos || 'center') + ' / cover no-repeat,' +
+    'linear-gradient(155deg, #191920 0%, #0b0b0f 100%)';
 }
 function castHTML(d){
   let h = '<div class="detail-sec" aria-hidden="true"><div class="detail-sec-title">Cast</div><div class="cast-row">';
   for(const name of castFor(d)){
     const ch = hashTitle(d.title + ':' + name);
-    h += '<div class="cast"><div class="avatar" style="background:linear-gradient(140deg,hsl(' + (8 + (ch % 48)) + ',58%,44%),hsl(' + (28 + (ch % 40)) + ',60%,24%))">' +
+    h += '<div class="cast"><div class="avatar" style="background:linear-gradient(140deg,hsl(0,0%,' + (30 + (ch % 12)) + '%),hsl(0,0%,' + (15 + (ch % 8)) + '%))">' +
          initialsOf(name) + '</div><div class="cast-name">' + name + '</div></div>';
   }
   return h + '</div></div>';
@@ -950,8 +957,8 @@ function renderTV(){
   } else if(def.layout==='detail'){
     const d = state.detail || MOVIES[0];
     const mp = detailMetaParts(d);
-    /* Full-bleed cinematic backdrop (CSS art in the title's hue) with
-       the content flowing over its scrim. The backdrop, cast and
+    /* Full-bleed cinematic backdrop (the title's key-art photo)
+       with the content flowing over its scrim. The backdrop, cast and
        More Like This blocks are decoration (aria-hidden); the ONLY
        focusable elements are the two original detail items, rendered
        in original order with original ids and actions — Play restyled

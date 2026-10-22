@@ -50,3 +50,8 @@ One day, ten build stages. Every stage is a real commit on `main`; nothing is ba
 - The blue identity is gone: black base (#050505/#0b0b0f), red (#e50914) for primary actions/active states, yellow (#ffc61a) for the focus ring, key figures and badges.
 - Composition unchanged from v10: Home + Search live at the top; Subtitles and all content below; tiles are black with red/yellow accents; hero and poster art shifted to ember/gold/charcoal.
 - Colours, gradients, borders and shadows only — no layout, logic or data changes. Graph still 44 nodes / 206 edges; canonical flow re-verified (Task 1 = 8 presses → Task 2 = 2). All gallery screenshots re-shot.
+
+## v12 — Netflix-style identity + real photographic posters
+- TV surface now reads as a streaming service: full ACCESSFLOW wordmark in Netflix red, photographic hero with Play / More Info pills, green match %, yellow kept only for the focus ring (visibility is the accessibility point).
+- All 15 movie posters are real themed photographs (Pexels, free license) shipped in the repo under assets/posters/ with a CREDITS.md — hero, rows, catalog and detail pages all use the photographic key art; the gradient-block posters are gone.
+- Presentation only, as before: graph 44 nodes / 206 edges, canonical flow re-verified (8 → 2 presses), 20/20 tests.
