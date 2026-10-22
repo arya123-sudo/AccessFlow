@@ -10,15 +10,20 @@
 
 ## The demo flow (what judges should try)
 1. **Task 1 — Turn on Subtitles (baseline).** Navigate Home → Settings → Accessibility → Subtitles → On using the remote. Navigate naturally; the metrics panel counts every press and the event log flags overshoots, backtracks, and wrong selects as they happen. The optimal-path indicator shows what Dijkstra computes as the cheapest route.
-2. **The suggestion.** After the run, AccessFlow presents what it detected (with numbers) and proposes pinning a Subtitles shortcut on Home plus enlarged focus. Nothing changes until you tap **Approve & apply** — try **Dismiss** first if you want to prove that.
+2. **The suggestion (discovered, not scripted).** After the run, AccessFlow ranks destinations by `visits × average excess cost` from your measured runs and proposes a shortcut to the winner — in this flow, Subtitles — citing its own data (total presses, excess vs the Dijkstra optimal, discovery score), plus enlarged focus when overshoots/reversals are high. Nothing changes until you tap **Approve & apply** — try **Dismiss** first if you want to prove that (dismissals are recorded in the audit panel).
 3. **Task 2 — Same task, adapted.** Use the new Home shortcut. The results panel then renders the measured before/after comparison (presses, errors, time, % improvement) from your two actual runs.
-4. **Task 3 (bonus) — Play "River Run".** Shows the engine generalizing to a content task, plus contextual recovery if you get lost on the way.
+4. **Task 3 (bonus) — Play "River Run".** Shows the engine generalizing to a content task. Get "lost" on purpose (several Back presses) to trigger **contextual recovery**: the card predicts your goal from your path so far and past visits — labelled in-app as counting over the graph, not an LLM — and offers the next step on the shortest route.
+5. **Adaptations panel.** Lists every applied adaptation with its timestamp and triggering evidence. Use **Undo** to revert one: the Home shortcut tile and its graph edge are removed and the revert is logged.
+6. **Guided navigation ("Guide me").** Restart the demo (or start any task), then press **Guide me** in the *Optimal path from here* panel. The panel now walks you to the goal step by step — destination, "Step k of n", and the next action in words ("Press ▼ (Down) to “Settings”", "Press OK to open Accessibility"). Follow it with the remote: it advances only when *you* press (it never presses for you). Deliberately go the wrong way once — the guide recomputes the route from your new position and logs "Guided route updated from here", while the deviation still registers as a difficulty signal. While you do any of this, watch **"Your path effort: X · optimal Y"** in the Live metrics panel: X sums the weighted cost of the edges you actually took, so the wrong turn visibly pushes X above the optimal Y; a perfect guided run finishes with X = Y and "✓ Destination reached".
 
 ## Project layout
 ```
 index.html          Page shell and TV/remote markup
 css/styles.css      10-foot UI theme, focus states, responsive layout
 js/engine.js        Weighted navigation graph, Dijkstra, adaptive UI state
-js/app.js           Event logging, difficulty detection, metrics, task flow
-docs/               Architecture and this guide
+js/app.js           Event logging, difficulty detection, metrics, task flow,
+                    adaptation audit trail & undo
+tests/              Node engine tests (node --test); CI in .github/workflows
+fire-tv/            Native Fire OS wrapper app (see docs/INSTALL_FIRE_TV.md)
+docs/               Architecture, install guide, study protocol, this guide
 ```

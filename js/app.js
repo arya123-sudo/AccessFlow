@@ -68,8 +68,19 @@ function renderPath(){
   $('mOpt').textContent = String(res.path.length + 1);
 }
 
+function renderEffortTally(){
+  const el = $('effortTally');
+  if(!el) return;
+  const x = run ? run.effort : 0;
+  const y = run ? run.effortOptimal : null;
+  el.innerHTML = 'Your path effort: <b>' + x.toFixed(1) + '</b> · optimal <b>' +
+    (y === null || y === undefined ? '–' : y.toFixed(1)) + '</b>' +
+    ' <span style="color:var(--faint)">(weighted cost of the edges you actually took this run, vs the cheapest route)</span>';
+}
+
 function renderMetrics(){
   if(!run) return;
+  renderEffortTally();
   $('mPresses').textContent = run.presses;
   $('mErrors').textContent = run.errors;
   $('mBack').textContent = run.backtracks;
@@ -94,7 +105,7 @@ function renderMetrics(){
     '<br>Session <b>' + state.sessionCount + '</b> \u00B7 learning accumulates on this device \u2014 run statistics and preferences are kept only in this browser (local storage), never uploaded';
 }
 
-function updateAll(){ renderTV(); renderMetrics(); renderPath(); refreshRecoverText(); renderAdaptations(); }
+function updateAll(){ renderTV(); renderMetrics(); renderPath(); refreshRecoverText(); renderAdaptations(); renderGuide(); }
 
 /* ---------------- press handling ---------------- */
 function beginPress(guided){
@@ -102,6 +113,11 @@ function beginPress(guided){
   if(!run || !run.active) return;
   if(!run.started){
     run.started = true; run.startT = now; run.lastPressT = now;
+    /* Path-effort tally anchors: the node this run starts from and the
+       weighted optimal route effort from here to the run's goal. */
+    run.effortStartKey = nodeKey();
+    const dest = destinationById(run.destId);
+    run.effortOptimal = dest ? weightedRouteEffort(run.effortStartKey, dest.node) : null;
     logEvent('Run started — timer running.');
     if(!guided) run.presses++;
     return;
@@ -232,12 +248,26 @@ function executeAction(item, a){
 }
 
 function press(kind, guided){
+  const activeRun = (run && run.active) ? run : null;
+  const prevKey = nodeKey();
   beginPress(!!guided);
   if(kind==='up'||kind==='down'||kind==='left'||kind==='right') doMove(kind, !!guided);
   else if(kind==='ok') doSelect(!!guided);
   else if(kind==='back') doBack(!!guided);
   else if(kind==='home') doHome(!!guided);
+  /* Path-effort tally: price the edge this press actually traversed,
+     in the live weighted model. Only the user's own presses count —
+     recovery's "take the step for me" presses (guided=true) are
+     excluded, exactly as they are excluded from the press count. */
+  if(!guided && activeRun && activeRun.effortStartKey){
+    const hint = kind==='ok' ? {kind:'select'}
+               : kind==='back' ? {kind:'back'}
+               : kind==='home' ? {kind:'home'}
+               : {kind:'move', dir:kind};
+    activeRun.effort += traversedCost(prevKey, nodeKey(), hint.kind, hint.dir);
+  }
   if(run && run.active) run.pathSeq.push(nodeKey());
+  syncGuideAfterPress();
   updateAll();
 }
 
@@ -497,6 +527,114 @@ function showRecover(reason){
 }
 function hideRecover(){ $('recoverCard').classList.remove('show'); }
 
+/* ---------------- guided navigation (walkthrough) ----------------
+   Adapted from a teammate prototype's "Guided Navigation" pattern,
+   rebuilt on the live Dijkstra route the path panel already shows.
+   The user presses "Guide me" and the panel walks them to the active
+   task's destination one step at a time: destination, "Step k of n",
+   and the next action in words. The guide OBSERVES the user's real
+   presses — it never presses anything itself (unlike recovery's
+   opt-in "take the next step for me" button, which stays separate).
+
+   Step tracking is the pure guideAdvance() in engine.js: performing
+   the expected action advances; landing on a later route node jumps
+   ahead; a press that doesn't move (blocked move, self action) just
+   re-renders; ANY other node is a deviation — the route is recomputed
+   from the new current node and the update is logged. Deviations
+   still flow through the normal difficulty detection untouched.
+
+   Lifetime: a guide belongs to the run it was started in. When that
+   run completes, the guide shows "Destination reached" and ends; a
+   new task (Task 2/3) clears it — press Guide me again there. The
+   final plan step is synthetic: the completing action performed AT
+   the destination node (its Select), which is what actually finishes
+   the task. */
+let guide = null;   // {active, reached, runRef, destNode, destName,
+                    //  finalLabel, plan:[steps..., finalStep], idx, done}
+function guideStepText(step){
+  if(step.final) return 'Press OK to finish \u2014 ' + guide.finalLabel;
+  const a = step.action;
+  if(a.kind==='move')
+    return 'Press ' + ARROWS[a.dir].split(' ')[0] + ' (' + a.dir[0].toUpperCase() + a.dir.slice(1) + ') to \u201C' +
+           itemLabel(step.to.split(':')[0], step.to.split(':')[1]) + '\u201D';
+  if(a.kind==='select') return 'Press OK to open ' + screenTitle(step.to.split(':')[0]);
+  if(a.kind==='back') return 'Press Back to return to ' + screenTitle(step.to.split(':')[0]);
+  return 'Press Home';
+}
+function startGuide(){
+  const tgt = currentTarget();
+  if(!tgt) return;
+  const steps = guideRouteSteps(nodeKey(), tgt.node, false);
+  if(!steps) return;
+  guide = { active:true, reached:false, runRef:run, destNode:tgt.node,
+            destName: tgt.node==='detail:play' ? 'River Run (Play)' : tgt.name,
+            finalLabel: tgt.finalChip.replace(/^OK \u00B7 /, ''),
+            plan: steps.concat([{from:tgt.node, to:tgt.node, action:{kind:'select'}, final:true}]),
+            idx:0, done:0 };
+  logEvent('Guided navigation started \u2014 follow the steps in the Optimal path panel. AccessFlow only watches your presses; it never presses for you.', 'guide');
+  renderGuide();
+}
+function endGuide(){
+  if(!guide) return;
+  guide = null;
+  logEvent('Guided navigation stopped.', 'guide');
+  renderGuide();
+}
+function rerouteGuide(cur){
+  const steps = guideRouteSteps(cur, guide.destNode, false);
+  if(!steps) return;
+  guide.done += guide.idx;   // fold this plan's consumed steps into the progress base
+  guide.plan = steps.concat([{from:guide.destNode, to:guide.destNode, action:{kind:'select'}, final:true}]);
+  guide.idx = 0;
+  logEvent('Guided route updated from here \u2014 new route to ' + guide.destName + ' computed from your current position.', 'guide');
+}
+function syncGuideAfterPress(){
+  if(!guide || !guide.active) return;
+  if(run !== guide.runRef || !guide.runRef.active){
+    guide.active = false;
+    guide.reached = true;
+    logEvent('Destination reached \u2014 guided navigation complete (' + guide.destName + ').', 'good');
+    return;
+  }
+  const cur = nodeKey();
+  const finIdx = guide.plan.length - 1;
+  if(guide.idx >= finIdx){
+    /* Next step is the final action AT the destination node: being
+       there is correct (the final press completes the task and is
+       caught by the run-end branch above); being anywhere else means
+       the user wandered off the goal node — reroute back to it. */
+    if(cur !== guide.destNode) rerouteGuide(cur);
+    return;
+  }
+  const adv = guideAdvance(guide.plan, guide.idx, cur);
+  if(adv.type==='advance') guide.idx = adv.idx;
+  else if(adv.type==='reroute') rerouteGuide(cur);
+  /* 'stay' / 'done': position unchanged — nothing to recompute. */
+}
+function renderGuide(){
+  const btn = $('guideBtn'), stop = $('guideStopBtn'), box = $('guideBox');
+  if(!btn || !stop || !box) return;
+  if(guide && (guide.active || guide.reached)){
+    btn.hidden = true;
+    stop.hidden = false;
+    box.hidden = false;
+    $('guideDest').textContent = (guide.reached ? 'Guided to: ' : 'Guiding you to: ') + guide.destName;
+    const total = guide.done + guide.plan.length;
+    if(guide.reached){
+      $('guideStep').textContent = '\u2713 Destination reached';
+      $('guideProg').textContent = 'Step ' + total + ' of ' + total;
+    } else {
+      const step = guide.plan[guide.idx];
+      $('guideStep').textContent = step ? guideStepText(step) : '\u2026';
+      $('guideProg').textContent = 'Step ' + Math.min(guide.done + guide.idx + 1, total) + ' of ' + total;
+    }
+    return;
+  }
+  box.hidden = true;
+  stop.hidden = true;
+  btn.hidden = !currentTarget();   // offered only while a task/goal is active
+}
+
 /* ---------------- task flow ---------------- */
 function setTaskCard(kicker, title, desc, routeHTML, done){
   $('taskKicker').textContent = kicker;
@@ -510,6 +648,7 @@ function routeLine(){
   return 'Fastest route from Home right now: <b>' + n + ' presses</b> — Home → Settings → Accessibility → Subtitles → On';
 }
 function startTask2(){
+  guide = null;   // a guide belongs to its run — Task 2 starts unguided
   state.settings.subtitles = false;
   state.navStack = [];
   state.screen = 'home'; state.focusId = defaultFocus('home');
@@ -529,6 +668,7 @@ function startTask2(){
   updateAll();
 }
 function startTask3(){
+  guide = null;   // a guide belongs to its run — Task 3 starts unguided
   state.navStack = [];
   state.screen = 'home'; state.focusId = defaultFocus('home');
   state.phase = 'task3';
@@ -691,6 +831,8 @@ $('recoverDismiss').addEventListener('click', ()=>{
   logEvent('Recovery dismissed — you kept control. It can return if the struggle continues.', 'guide');
 });
 $('restartBtn').addEventListener('click', ()=>location.reload());
+$('guideBtn').addEventListener('click', startGuide);
+$('guideStopBtn').addEventListener('click', ()=>{ endGuide(); updateAll(); });
 
 /* Movement profile control (Live metrics panel): a user PREFERENCE.
    Clicking a segment only reprices directions in the weighted effort

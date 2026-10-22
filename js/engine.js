@@ -79,7 +79,10 @@ function freshRun(task){
            lastDir:null, selectSince:true, visited:new Set(),
            pathSeq:[],              // ordered node keys visited this run (for goal prediction)
            destId:(task==='task3' ? 'riverrun' : 'subtitles'),
-           optStart:null };         // optimal presses from Home at run start (for excess cost)
+           optStart:null,           // optimal presses from Home at run start (for excess cost)
+           effort:0,                // live path-effort tally: weighted costs of edges ACTUALLY traversed
+           effortStartKey:null,     // node the run started from (set on the first press)
+           effortOptimal:null };    // weighted optimal route effort from effortStartKey (set on first press)
 }
 run = freshRun('task1');
 
@@ -509,6 +512,59 @@ function dijkstraCore(adj, start, target, weightFn){
 function dijkstra(start, target, weighted){
   const adj = buildGraph();
   return dijkstraCore(adj, start, target, (u, e)=>edgeWeight(u, e.action, weighted, e));
+}
+
+/* ---------------- guided navigation + path-effort tally ----------------
+   Two features adapted from a teammate's prototype ("Guided
+   Navigation" walkthrough and "Estimated Navigation Effort"
+   analytics), rebuilt on this engine's live graph:
+
+   GUIDED NAVIGATION — guideRouteSteps() turns the same Dijkstra route
+   the path panel displays into an ordered list of steps; the app
+   layer walks the user through them one press at a time, OBSERVING
+   the user's real presses only (it never presses anything itself).
+   guideAdvance() is the pure step-tracking core: given the current
+   plan and the node the user is actually on, it classifies the
+   position as 'advance' (expected step performed, or a jump ahead to
+   a later plan node), 'stay' (still at the expected position — a
+   blocked press or a self action), 'reroute' (anywhere else — the
+   caller recomputes the route from the new current node), or 'done'.
+
+   PATH-EFFORT TALLY — traversedCost() prices the single edge a press
+   actually traversed, in the same weighted model as everything else
+   (Fitts + difficulty multiplier + learned bumps + movement
+   profile), so a run's accumulated "your path effort" is directly
+   comparable to weightedRouteEffort(): the weighted cost of the
+   optimal route over the same start -> goal, INCLUDING the final
+   action press performed at the target node (its Select edge — a
+   self-edge for toggles, the Play edge for the movie page). Taking
+   exactly the optimal route makes the two figures equal; every
+   detour, overshoot and reversal pushes the tally above optimal.   */
+function guideRouteSteps(start, target, weighted){
+  const res = dijkstra(start, target, !!weighted);
+  if(!isFinite(res.dist)) return null;
+  return res.path.map(st=>({ from:st.from, to:st.to, action:st.action }));
+}
+function guideAdvance(plan, idx, currentKey){
+  if(!plan || idx >= plan.length) return { type:'done' };
+  if(currentKey === plan[idx].to) return { type:'advance', idx: idx + 1, jumped: 0 };
+  for(let j = idx + 1; j < plan.length; j++)
+    if(plan[j].to === currentKey) return { type:'advance', idx: j + 1, jumped: j - idx };
+  if(currentKey === plan[idx].from) return { type:'stay' };
+  return { type:'reroute' };
+}
+function traversedCost(from, to, kind, dir){
+  const adj = buildGraph();
+  const e = (adj[from] || []).find(x => x.to === to && x.action.kind === kind &&
+                                        (dir === undefined || x.action.dir === dir));
+  return e ? edgeWeight(from, e.action, true, e) : 0;
+}
+function weightedRouteEffort(start, target){
+  const res = dijkstra(start, target, true);
+  if(!isFinite(res.dist)) return Infinity;
+  const adj = buildGraph();
+  const fin = (adj[target] || []).find(e => e.action.kind === 'select');
+  return res.dist + (fin ? edgeWeight(target, fin.action, true, fin) : 0);
 }
 
 /* ---------------- shortcut discovery (data-driven) ----------------
