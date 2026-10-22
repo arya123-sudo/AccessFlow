@@ -1,5 +1,9 @@
 # AccessFlow — Build Log (2026-10-22, hackathon day)
-One day, seven build stages. Every stage is a real commit on `main`; nothing is backdated.
+One day, eight build stages. Every stage is a real commit on `main`; nothing is backdated.
+
+## v8 — Streaming-UI restyle (his look, our engine)
+- The TV UI was re-themed to Shivaprasad's design language: deep navy `#0B1020`, teal `#55D6BE` accent, ACCESSFLOW wordmark + "Ability-Aware Smart TV Navigation" tagline, cinematic Home hero (featured title), poster-card rows, teal focus borders with scale — the Netflix/Hotstar-style presentation of his RN prototype.
+- Purely presentational: no item id, coordinate, order or action changed; graph still 44 nodes / 206 edges; canonical flow re-verified (8 presses → 2; 20/20 tests). All gallery screenshots re-shot in the new look.
 
 ## v7 — Full prototype consolidation (per team decision)
 - Shivaprasad's complete React Native project imported: root project files (`App.tsx`, `index.js`, `src/navigation/`, `__tests__/`, package + Metro/Babel/Jest/TS configs, Gemfile) — his repo is now present in full (57/57 files, hashes verified); his README is preserved as `RN_PROTOTYPE_README.md`.
