@@ -53,6 +53,24 @@ Every decision is appended to `state.adaptations` and rendered in the **Adaptati
 - **Dismissed** suggestions are recorded as dismissed — the audit trail includes refusals, not just approvals.
 - **Undo actually reverts**: for a pin, the Home tile is removed and the graph edge disappears (the graph is rebuilt from state on every query, so removal is immediate); for enlarged focus, the size mode and its Fitts effect revert. The revert is also written to the detection log.
 
+## Cross-session persistence (`saveLearning` / `loadLearning` / `resetLearning`)
+Learning that resets on reload is a demonstration, not learning — so the accumulated statistics persist in the browser's `localStorage` and genuinely accumulate over several sessions on the same device. Storage keys are prefixed `accessflow.`:
+
+| Key | Contents |
+| --- | --- |
+| `accessflow.destStats` | per-destination `{visits, totalPresses, totalExcess, difficultyEvents}` |
+| `accessflow.weights` | learned edge bumps (`state.weights`) |
+| `accessflow.edgeOutcomes` | per-action-class `{traversals, errors}` behind the difficulty multiplier |
+| `accessflow.prefixCounts` | learned path-prefix → destination counts |
+| `accessflow.movementProfile` | the user's movement-profile preference |
+| `accessflow.sessions` | session counter, incremented on every load |
+
+On load, the engine restores these fields, increments and re-stores the counter, and everything downstream — discovery ranking, error rates, goal prediction, the metrics panel's "Session N" line — works from the accumulated totals. The suggestion card cites the scope honestly: with more than one session on the device its evidence line begins "Across N sessions on this device · …".
+
+**What is deliberately NOT stored:** adaptations. A pinned shortcut is an in-the-moment approval, so pins (and enlarged-focus mode) are never silently restored — each session starts un-adapted and every adaptation is approved again. Transient run state (current task, timers, the results table, the audit panel) is likewise session-only.
+
+**Failure behaviour:** storage is probed once and every access is wrapped in `try/catch`. If `localStorage` is unavailable or throws (some `file://` contexts, private mode, disabled storage), the app falls back to in-memory learning for the session with identical behaviour — nothing breaks, the data just doesn't carry over. **Reset learning** (Live metrics panel) removes the stored fields, clears the in-memory statistics, and returns the movement profile to Standard; the session counter restarts at 1. All data stays on-device in the browser — nothing is uploaded anywhere.
+
 ## Goal prediction for task recovery (`predictGoal`)
 When difficulty spikes mid-task (≥ 3 backtracks or reversals, or a long idle with prior difficulty), the recovery card does not assume the task target — it **predicts** the destination:
 
@@ -72,7 +90,7 @@ Probabilities are the raw scores normalized. The recovery card shows the predict
 Each task run records presses, errors, backtracks, reversals, hesitations, and elapsed time, plus its destination and the optimal press count at run start. The results panel compares the baseline run against the adapted run using **only measured values from the actual runs** — no hard-coded results.
 
 ## Tests
-`tests/engine.test.js` (Node's built-in `node:test`, no dependencies) evaluates the shipped `js/engine.js` unchanged in a `vm` context with a minimal DOM stub, and exercises the real production functions: `dijkstraCore` on a hand-built graph with a known shortest path, the live graph's known Home→Subtitles optimum, Fitts monotonicity and the enlarged-mode cost drop, the difficulty multiplier, `combineWeight`, `rankShortcutCandidates` on synthetic visit data (including the case where a movie beats Subtitles), `predictGoal`, `isReversal`, and the movement-profile multiplier (direction-only ×2.0, unweighted cost untouched, and profile-steered Dijkstra routing on a two-route graph). CI (`.github/workflows/ci.yml`) runs syntax checks plus `node --test` on every push.
+`tests/engine.test.js` (Node's built-in `node:test`, no dependencies) evaluates the shipped `js/engine.js` unchanged in a `vm` context with a minimal DOM stub, and exercises the real production functions: `dijkstraCore` on a hand-built graph with a known shortest path, the live graph's known Home→Subtitles optimum, Fitts monotonicity and the enlarged-mode cost drop, the difficulty multiplier, `combineWeight`, `rankShortcutCandidates` on synthetic visit data (including the case where a movie beats Subtitles), `predictGoal`, `isReversal`, and the movement-profile multiplier (direction-only ×2.0, unweighted cost untouched, and profile-steered Dijkstra routing on a two-route graph), plus the cross-session persistence layer (serialize/parse round-trips against a storage stub, restore + session-counter increment across two engine loads sharing one stub, accumulated multi-session ranking, reset semantics, and throwing/absent-storage fallbacks). CI (`.github/workflows/ci.yml`) runs syntax checks plus `node --test` on every push.
 
 ## Scope / honesty note
 This repository is a Fire TV *experience prototype*: a 10-foot UI simulator that runs the real engine end-to-end. The graph, Dijkstra optimizer, effort model, discovery, prediction, detection, and metrics are production-logic code; the roadmap item is packaging the same engine as a native Fire TV app with per-profile ability models.

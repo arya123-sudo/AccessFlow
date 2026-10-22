@@ -90,7 +90,8 @@ function renderMetrics(){
     '<br>Effort model: weight = (1 + Fitts log\u2082(d/size + 1)) \u00D7 (1 + your error rate) + learned bumps \u00B7 your error rate so far: <b>' +
     errPct + '%</b> \u00B7 target sizes \u00D7' + (state.adapted.large ? '1.5 (enlarged mode)' : '1.0') +
     ' \u00B7 optimal-press figures always use a pure count of 1 per press' +
-    '<br>' + profText + ' \u00B7 a preference you set \u2014 it changes weighted cost only, never press counts';
+    '<br>' + profText + ' \u00B7 a preference you set \u2014 it changes weighted cost only, never press counts' +
+    '<br>Session <b>' + state.sessionCount + '</b> \u00B7 learning accumulates on this device \u2014 run statistics and preferences are kept only in this browser (local storage), never uploaded';
 }
 
 function updateAll(){ renderTV(); renderMetrics(); renderPath(); refreshRecoverText(); renderAdaptations(); }
@@ -267,6 +268,7 @@ function recordRunStats(rec){
   s.totalExcess += Math.max(0, rec.presses - (rec.optStart || rec.presses));
   s.difficultyEvents += rec.reversals + rec.backtracks + rec.errors + rec.hesitations;
   learnPrefixes(rec.pathSeq, rec.destId);
+  saveLearning();   // accumulated stats + prefixes now survive reloads (see engine.js)
 }
 /* Stats used for ranking: completed runs plus, for a mid-run
    suggestion, the in-progress run's numbers for its destination. */
@@ -287,7 +289,11 @@ function computeSuggestion(){
   if(!cands.length) return null;
   const top = cands[0];
   const evidence = [];
-  if(top.visits) evidence.push(top.visits + ' measured run' + (top.visits>1?'s':'') + ' to ' + top.dest.name +
+  /* Citation scope is honest about where the numbers come from: with
+     more than one session on this device the totals are the
+     ACCUMULATED cross-session statistics, and the card says so. */
+  const scope = state.sessionCount > 1 ? 'Across ' + state.sessionCount + ' sessions on this device \u00B7 ' : '';
+  if(top.visits) evidence.push(scope + top.visits + ' measured run' + (top.visits>1?'s':'') + ' to ' + top.dest.name +
     ' \u00B7 ' + top.totalPresses + ' total presses' +
     (top.totalExcess > 0 ? ' \u00B7 ' + top.totalExcess + ' excess presses vs the Dijkstra optimal' : ' \u00B7 no excess presses'));
   if(top.difficultyEvents) evidence.push(top.difficultyEvents + ' difficulty events recorded on the way there');
@@ -349,7 +355,9 @@ function showSuggestion(reason){
   state.pendingSuggestion = sug;
   const card = $('suggestCard');
   $('pinTitle').textContent = 'Pin a ' + sug.dest.name + ' shortcut on Home';
-  $('pinEffect').textContent = 'Discovered from your runs: ' + sug.visits + ' visit' + (sug.visits===1?'':'s') +
+  $('pinEffect').textContent = 'Discovered from your runs' +
+    (state.sessionCount > 1 ? ' across ' + state.sessionCount + ' sessions on this device' : '') +
+    ': ' + sug.visits + ' visit' + (sug.visits===1?'':'s') +
     ', ' + sug.totalPresses + ' presses' + (sug.totalExcess ? ', ' + sug.totalExcess + ' of them excess' : '') +
     '. Adds a direct Home \u2192 ' + sug.dest.name + ' route \u2014 optimal drops from ' + sug.optNow + ' presses to ' + sug.optPinned + '.';
   const showLarge = sug.focusTrouble >= 1;
@@ -686,13 +694,38 @@ function applyMovementProfile(id){
   const prof = setMovementProfile(id);
   document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
     b.classList.toggle('active', b.getAttribute('data-profile')===prof.id));
-  if(before !== prof.id)
+  if(before !== prof.id){
     logEvent('Preference changed \u2014 movement profile: ' + prof.name + '. ' + prof.blurb +
              ' Weighted routing now accounts for it; press counts are unchanged.', 'guide');
+    saveLearning();   // the profile is a persisted preference (see engine.js)
+  }
   updateAll();
 }
 document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
   b.addEventListener('click', ()=>applyMovementProfile(b.getAttribute('data-profile'))));
+
+/* On load, reflect a movement profile restored from a previous
+   session in the segmented control (engine.js already restored the
+   value itself before this script ran). */
+document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
+  b.classList.toggle('active', b.getAttribute('data-profile')===state.movementProfile));
+
+/* Reset learning (metrics panel): clears the persisted statistics,
+   learned edge bumps and prefix counts from this device and returns
+   the movement profile to Standard (engine.js resetLearning). The
+   session counter restarts at 1. Adaptations are per-session and are
+   NOT touched — an approved pin stays until undone or reload. */
+$('resetLearningBtn').addEventListener('click', ()=>{
+  resetLearning();
+  document.querySelectorAll('#profileSeg .segbtn').forEach(b=>
+    b.classList.toggle('active', b.getAttribute('data-profile')==='standard'));
+  logEvent('Learning reset \u2014 accumulated run statistics, learned edge weights and prefix counts cleared from this device; movement profile back to Standard. This now counts as Session 1.', 'guide');
+  updateAll();
+});
+
+/* Belt-and-braces: persist whatever learning exists when the page is
+   hidden/closed (individual changes already save as they happen). */
+window.addEventListener('pagehide', ()=>{ try { saveLearning(); } catch(e){} });
 
 /* idle watcher: hesitation-prone stillness + recovery offer */
 setInterval(()=>{
@@ -718,6 +751,13 @@ setInterval(tickClock, 20000);
 /* init */
 run.optStart = optimalFromHomeFor('subtitles:sub_toggle');
 if(!run.pathSeq.length) run.pathSeq.push(nodeKey());
+if(state.sessionCount > 1){
+  const restoredRuns = Object.values(state.destStats).reduce((a,s)=>a + (s.visits || 0), 0);
+  logEvent('Session ' + state.sessionCount + ' on this device \u2014 learning restored: ' + restoredRuns +
+           ' measured run' + (restoredRuns===1?'':'s') + ' of accumulated statistics' +
+           (Object.keys(state.weights).length ? ', ' + Object.keys(state.weights).length + ' learned edge weight' + (Object.keys(state.weights).length>1?'s':'') : '') +
+           '. Adaptations are not restored \u2014 each one is approved per session.', 'guide');
+}
 setTaskCard('Task 1 of 2 · Baseline run', 'Turn on Subtitles',
   'Use the remote below to navigate the TV: Home → Settings → Accessibility → Subtitles → switch On. AccessFlow is watching how the journey feels — every press is measured.',
   routeLine());

@@ -39,6 +39,7 @@ Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for 
 5. **Adapt, audit & undo** — applied adaptations are recorded in an audit panel with their triggering evidence and a timestamp, and each can be **undone** (the shortcut tile, graph edge, and size mode all revert). Dismissed suggestions are recorded too.
 6. **Recover** — mid-task difficulty triggers a recovery card whose goal is *predicted* from your path so far (route-coverage matching against each destination's canonical route, blended with learned prefix counts and visit history) with the next Dijkstra step to that goal. This is transparent counting over the graph — **not an LLM**, and it is labelled that way in the UI.
 7. **Movement profile** — a preference *you* set (Standard / **Reduce horizontal effort** / **Reduce vertical effort**), never an auto-adaptation: moves in the direction you find harder cost ×2.0 in the weighted effort model, so effort-based routing (the weighted-effort figure, the recovery card's next step) steers around that axis. Press counts and optimal-press figures never change — only weighted cost does. Set it any time from the Live metrics panel; changes are logged as preferences, not adaptations.
+8. **Learning persists on-device** — the accumulated statistics behind discovery (per-destination visits/presses/excess, learned edge weights, error rates, prefix counts), your movement profile, and a session counter are kept in this browser's local storage and **accumulate across sessions**, so suggestions cite your real history ("Across 3 sessions · 4 measured runs…"). Data never leaves the device. Adaptations (pinned shortcuts) are *not* stored — each is approved per session. **Reset learning** in the Live metrics panel wipes the stored data and returns the profile to Standard.
 
 ### Architecture at a glance
 ```mermaid
@@ -58,7 +59,8 @@ flowchart LR
 ## Tests
 ```
 node --test        # node:test suite in tests/ — Dijkstra, Fitts monotonicity,
-                   # discovery ranking, goal prediction, detection helper
+                   # discovery ranking, goal prediction, detection helper,
+                   # cross-session persistence round-trips
 node --check js/engine.js && node --check js/app.js
 ```
 CI (GitHub Actions, workflow `ci`) runs the same checks on every push.

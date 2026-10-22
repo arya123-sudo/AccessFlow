@@ -18,7 +18,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function loadEngine() {
+function loadEngine(store) {
   const stubEl = () => ({
     innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {}, contains: () => false },
@@ -34,11 +34,24 @@ function loadEngine() {
       createElement: () => stubEl(),
     },
   };
+  if (store) sandbox.localStorage = store;
   sandbox.window = sandbox;
   const ctx = vm.createContext(sandbox);
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'engine.js'), 'utf8');
   vm.runInContext(src, ctx, { filename: 'engine.js' });
   return (expr) => vm.runInContext(expr, ctx);
+}
+
+/* In-memory localStorage stub for the persistence tests. Two engine
+ * loads sharing one stub simulate two browser sessions on one device. */
+function makeStore(seed) {
+  const data = Object.assign({}, seed || {});
+  return {
+    data,
+    getItem(k) { return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+    setItem(k, v) { data[k] = String(v); },
+    removeItem(k) { delete data[k]; },
+  };
 }
 
 test('dijkstraCore: finds the known shortest path and its weight on a hand-built graph', () => {
@@ -262,6 +275,140 @@ test('movement profile: Dijkstra routing steers off the disfavoured axis when an
     `weighted live effort must rise under Reduce horizontal (${out.liveRedH} > ${out.liveStd})`);
   assert.equal(out.livePress, out.livePressH, 'unweighted press optimum is identical under any profile');
   assert.equal(out.livePress + 1, 6, 'the known Home->Subtitles press optimum is unchanged');
+});
+
+test('persistence: serialize/parse round-trips destStats and learned bumps; corrupt data falls back', () => {
+  const ev = loadEngine();
+  const out = ev(`(function(){
+    const stats = { subtitles: {visits:2, totalPresses:16, totalExcess:4, difficultyEvents:3},
+                    riverrun:  {visits:1, totalPresses:9,  totalExcess:3, difficultyEvents:1} };
+    const bumps = { 'home:search|moveright': 0.6, 'settings:accessibility|select': 1.2 };
+    return JSON.stringify({
+      stats: parseLearningField(serializeLearningField(stats), {}),
+      bumps: parseLearningField(serializeLearningField(bumps), {}),
+      corrupt: parseLearningField('{not json', 'FB'),
+      missing: parseLearningField(null, 'FB'),
+      wrongType: parseLearningField('[1,2]', 'FB')
+    });
+  })()`);
+  const r = JSON.parse(out);
+  assert.deepEqual(r.stats, {
+    subtitles: { visits: 2, totalPresses: 16, totalExcess: 4, difficultyEvents: 3 },
+    riverrun: { visits: 1, totalPresses: 9, totalExcess: 3, difficultyEvents: 1 },
+  });
+  assert.deepEqual(r.bumps, { 'home:search|moveright': 0.6, 'settings:accessibility|select': 1.2 });
+  assert.equal(r.corrupt, 'FB', 'corrupt JSON must restore as the fallback, never throw');
+  assert.equal(r.missing, 'FB');
+  assert.equal(r.wrongType, 'FB', 'a non-object payload must restore as the fallback');
+});
+
+test('persistence: learning survives a reload (new engine, same storage) and the session counter increments', () => {
+  const store = makeStore();
+  const ev1 = loadEngine(store);
+  const s1 = ev1(`(function(){
+    state.destStats.subtitles = {visits:1, totalPresses:8, totalExcess:2, difficultyEvents:1};
+    state.weights['home:search|moveright'] = 0.6;
+    state.edgeOutcomes['moveright'] = {traversals:3, errors:1};
+    state.prefixCounts['home:search'] = {subtitles:1};
+    setMovementProfile('reduceH');
+    saveLearning();
+    return state.sessionCount;
+  })()`);
+  assert.equal(s1, 1, 'first load on a fresh device is Session 1');
+
+  const ev2 = loadEngine(store); // same storage stub == same browser, new session
+  const s2 = ev2(`(function(){
+    return { sessions: state.sessionCount, profile: state.movementProfile,
+             visits: state.destStats.subtitles.visits, excess: state.destStats.subtitles.totalExcess,
+             bump: state.weights['home:search|moveright'],
+             outcomeT: state.edgeOutcomes['moveright'].traversals,
+             prefix: state.prefixCounts['home:search'].subtitles,
+             pins: state.adapted.pins.length };
+  })()`);
+  assert.equal(s2.sessions, 2, 'the counter increments across sessions');
+  assert.equal(s2.profile, 'reduceH', 'the movement profile is restored');
+  assert.equal(s2.visits, 1);
+  assert.equal(s2.excess, 2);
+  assert.equal(s2.bump, 0.6, 'learned edge bumps are restored');
+  assert.equal(s2.outcomeT, 3, 'per-action outcomes (error-rate learning) are restored');
+  assert.equal(s2.prefix, 1, 'learned prefix counts are restored');
+  assert.equal(s2.pins, 0, 'adaptations (pins) are NOT persisted — approvals are per-session');
+  assert.equal(store.data['accessflow.sessions'], '2', 'counter written back under the accessflow. prefix');
+  assert.ok(store.data['accessflow.destStats'].includes('"totalExcess":2'));
+});
+
+test('persistence: accumulated multi-session stats outrank a single-session candidate', () => {
+  // One session alone: the demo numbers select Subtitles.
+  const evSolo = loadEngine();
+  const soloTop = evSolo(`(function(){
+    const stats = { subtitles: { visits: 1, totalPresses: 8, totalExcess: 2, difficultyEvents: 1 } };
+    return rankShortcutCandidates(stats, [])[0].dest.id;
+  })()`);
+  assert.equal(soloTop, 'subtitles');
+
+  // But storage accumulated over earlier sessions tells a different
+  // story: River Run was visited 3 times at heavy excess cost. After a
+  // reload restores those totals, discovery must rank River Run first.
+  const store = makeStore({
+    'accessflow.destStats': JSON.stringify({
+      subtitles: { visits: 1, totalPresses: 8,  totalExcess: 2, difficultyEvents: 1 },
+      riverrun:  { visits: 3, totalPresses: 36, totalExcess: 9, difficultyEvents: 4 },
+    }),
+    'accessflow.sessions': '3',
+  });
+  const ev = loadEngine(store);
+  const out = ev(`(function(){
+    const ranked = rankShortcutCandidates(state.destStats, []);
+    return { sessions: state.sessionCount, top: ranked[0].dest.id, topScore: ranked[0].score,
+             order: ranked.map(c => c.dest.id).join(',') };
+  })()`);
+  assert.equal(out.sessions, 4, 'stored counter (3) increments on this load');
+  assert.equal(out.top, 'riverrun', 'accumulated cross-session cost beats the single-session candidate');
+  assert.equal(out.topScore, 9); // 3 visits x (9/3) average excess
+  assert.equal(out.order, 'riverrun,subtitles');
+});
+
+test('persistence: resetLearning clears stored fields and the profile; hostile storage never breaks the engine', () => {
+  const store = makeStore({
+    'accessflow.destStats': JSON.stringify({ subtitles: { visits: 2, totalPresses: 16, totalExcess: 4, difficultyEvents: 2 } }),
+    'accessflow.movementProfile': 'reduceV',
+    'accessflow.sessions': '5',
+  });
+  const ev = loadEngine(store);
+  assert.equal(ev(`state.sessionCount`), 6);
+  assert.equal(ev(`state.movementProfile`), 'reduceV');
+  const after = ev(`(function(){
+    resetLearning();
+    return { sessions: state.sessionCount, profile: state.movementProfile,
+             statKeys: Object.keys(state.destStats).length, bumpKeys: Object.keys(state.weights).length };
+  })()`);
+  assert.equal(after.sessions, 1, 'after a reset this session counts as Session 1');
+  assert.equal(after.profile, 'standard', 'reset returns the movement profile to Standard');
+  assert.equal(after.statKeys, 0);
+  assert.equal(after.bumpKeys, 0);
+  assert.equal(store.data['accessflow.destStats'], undefined, 'stored stats are removed');
+  assert.equal(store.data['accessflow.sessions'], '1', 'counter re-based at 1');
+
+  // Storage that throws on every access (denied / private mode): the
+  // probe must catch it and the engine must run on in-memory learning.
+  const throwing = {
+    getItem() { throw new Error('denied'); },
+    setItem() { throw new Error('denied'); },
+    removeItem() { throw new Error('denied'); },
+  };
+  const evT = loadEngine(throwing);
+  assert.equal(evT(`state.sessionCount`), 1);
+  assert.equal(evT(`(function(){ saveLearning(); resetLearning(); return state.sessionCount; })()`), 1);
+
+  // No localStorage at all (older file:// contexts): same guarantee.
+  const evBare = loadEngine();
+  const bare = evBare(`(function(){
+    saveLearning();
+    state.destStats.subtitles = {visits:1, totalPresses:8, totalExcess:2, difficultyEvents:0};
+    return { sessions: state.sessionCount, visits: state.destStats.subtitles.visits };
+  })()`);
+  assert.equal(bare.sessions, 1);
+  assert.equal(bare.visits, 1, 'in-memory fallback still learns within the session');
 });
 
 test('graph integrity: every edge target exists and pinning adds a Home shortcut tile', () => {
