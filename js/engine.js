@@ -42,6 +42,19 @@ const SHOWS = [
   {id:'northline',   title:'North Line',   meta:'Documentary · 1 season',      hue:200}
 ];
 
+/* Movie catalog contributed by Shivaprasad from his AccessFlow prototype:
+   https://github.com/shivaprasad938/accessflowai
+   Appended after the original Movies tiles so existing focus positions,
+   graph routes and demo tasks remain unchanged. */
+const SHIVAPRASAD_CATALOG = [
+  {id:'the-last-horizon', title:'The Last Horizon', meta:'Adventure • 2h 10m', hue:211},
+  {id:'city-of-dreams',   title:'City of Dreams',   meta:'Drama • 1h 45m',     hue:28},
+  {id:'beyond-the-stars', title:'Beyond the Stars', meta:'Sci-Fi • 2h 05m',    hue:174},
+  {id:'laugh-out-loud',   title:'Laugh Out Loud',   meta:'Comedy • 1h 30m',    hue:45},
+  {id:'hidden-truth',     title:'Hidden Truth',     meta:'Thriller • 1h 55m',  hue:350},
+  {id:'family-time',      title:'Family Time',      meta:'Family • 1h 40m',    hue:96}
+];
+
 const state = {
   screen:'home', focusId:'search',
   navStack: [],
@@ -132,8 +145,12 @@ function getScreens(){
   const screens = {
     home:{ title:'Home', layout:'grid', cols:3, hint:'', items: homeItems() },
     movies:{ title:'Movies', layout:'grid', cols:3, hint:'Pick a movie to open its page.',
+      credit:"Catalog from Shivaprasad's AccessFlow prototype",
       items: MOVIES.map((m,i)=>({id:m.id, label:m.title, sub:m.meta, poster:m, x:i%3, y:Math.floor(i/3),
-              action:{type:'openDetail', movie:m, kind:'Movie'}})) },
+              action:{type:'openDetail', movie:m, kind:'Movie'}}))
+        .concat(SHIVAPRASAD_CATALOG.map((m,i)=>({id:m.id, label:m.title, sub:m.meta, poster:m,
+              x:(MOVIES.length+i)%3, y:Math.floor((MOVIES.length+i)/3),
+              action:{type:'openDetail', movie:m, kind:'Movie'}}))) },
     shows:{ title:'TV Shows', layout:'grid', cols:3, hint:'Pick a show to open its page.',
       items: SHOWS.map((m,i)=>({id:m.id, label:m.title, sub:m.meta, poster:m, x:i, y:0,
               action:{type:'openDetail', movie:m, kind:'Series'}})) },
@@ -709,6 +726,7 @@ function renderTV(){
     for(const it of def.items)
       html += '<div class="tile' + (it.id===state.focusId?' focused':'') + (it.shortcut?' shortcut':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
     html += '</div>';
+    if(def.credit) html += '<p class="tv-hint" style="margin:10px 0 0;">' + def.credit + '</p>';
   } else if(def.layout==='list'){
     html += '<div class="list">';
     for(const it of def.items)
