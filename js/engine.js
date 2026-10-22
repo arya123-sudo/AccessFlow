@@ -697,8 +697,21 @@ const $ = id => document.getElementById(id);
 const tvBody = $('tvBody'), tvScreenEl = $('tvScreen');
 
 function posterHTML(m, big){
-  return '<div class="' + (big?'detail-poster':'poster') + '" style="background:linear-gradient(135deg,hsl(' + m.hue + ',52%,34%),hsl(' + ((m.hue+40)%360) + ',55%,20%))">' +
+  return '<div class="' + (big?'detail-poster':'poster') + '" style="background:linear-gradient(140deg,hsl(' + m.hue + ',60%,40%),hsl(' + ((m.hue+40)%360) + ',62%,16%))">' +
          m.title.split(' ').map(w=>w[0]).join('').slice(0,2) + '</div>';
+}
+/* Home hero banner — DECORATIVE ONLY (streaming-service look, after
+   Shivaprasad's RN prototype). It renders no screen item: no id, no
+   data-id, no action, and focus/navigation are driven purely by the
+   screen item data, so it can never be focused or change any route,
+   press count or graph edge. It simply features the first movie. */
+function heroHTML(){
+  const m = MOVIES[0];
+  return '<div class="hero" style="background:linear-gradient(100deg, rgba(11,16,32,.93) 26%, rgba(11,16,32,.55) 58%, rgba(11,16,32,.12) 100%), linear-gradient(135deg, hsl(' + m.hue + ',62%,40%), hsl(' + ((m.hue+45)%360) + ',65%,16%))">' +
+         '<div class="hero-kicker">Featured</div>' +
+         '<div class="hero-title">' + m.title + '</div>' +
+         '<div class="hero-meta">' + m.meta + '</div>' +
+         '<div class="hero-play">' + ICONS.play + 'Play</div></div>';
 }
 function itemInner(it){
   let h = '';
@@ -721,6 +734,8 @@ function renderTV(){
 
   let html = '';
   if(def.layout==='grid'){
+    if(state.screen==='home') html += heroHTML();
+    else html += '<h2 class="tv-title">' + def.title + '</h2>';
     if(def.hint) html += '<p class="tv-hint">' + def.hint + '</p>';
     html += '<div class="tiles cols' + def.cols + '">';
     for(const it of def.items)
@@ -728,6 +743,7 @@ function renderTV(){
     html += '</div>';
     if(def.credit) html += '<p class="tv-hint" style="margin:10px 0 0;">' + def.credit + '</p>';
   } else if(def.layout==='list'){
+    html += '<h2 class="tv-title">' + def.title + '</h2>';
     html += '<div class="list">';
     for(const it of def.items)
       html += '<div class="row-item' + (it.id===state.focusId?' focused':'') + '" data-id="' + it.id + '">' +
@@ -747,7 +763,7 @@ function renderTV(){
   } else if(def.layout==='player'){
     const d = state.detail || MOVIES[0];
     const focused = state.focusId==='playpause';
-    html += '<div class="playerbox"><div class="pbtn" style="' + (focused?'transform:scale(1.1);box-shadow:0 0 0 4px rgba(255,180,58,.35);':'') + '">' +
+    html += '<div class="playerbox"><div class="pbtn" style="' + (focused?'transform:scale(1.1);box-shadow:0 0 0 4px rgba(85,214,190,.4);':'') + '">' +
             (state.playing ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
                            : ICONS.play) + '</div>' +
             '<div style="font-size:19px;font-weight:800;">' + d.title + '</div>' +
