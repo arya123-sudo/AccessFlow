@@ -11,6 +11,24 @@ AccessFlow identifies navigation difficulties, dynamically optimizes interaction
 ## Key innovation
 A self-adapting, ability-aware navigation engine that learns from interaction difficulties and optimizes TV navigation workflows, instead of relying on fixed navigation structures.
 
+## Screenshots
+Real captures from an actual run of the prototype (see `docs/DEMO_GUIDE.md` for the flow):
+
+**Fire TV Home — baseline navigation**
+![Home](screenshots/home.png)
+
+**Task 1 done — difficulty detected and logged live (overshoots, reversals, presses vs optimal)**
+![Detection log](screenshots/detection-log.png)
+
+**AccessFlow proposes an adaptation — with its evidence, and only the user can approve it**
+![Adaptation suggestion](screenshots/adaptation-suggestion.png)
+
+**Home after approval — the Subtitles shortcut is pinned**
+![Home adapted](screenshots/home-adapted.png)
+
+**Measured results — baseline vs adapted run, computed from the actual runs**
+![Results](screenshots/results.png)
+
 ## How it works
 1. **Detect** — every remote press is logged; overshoots, backtracks, wrong selects, reversals, and hesitations are classified live.
 2. **Optimize** — screens and focus positions are graph nodes, remote actions are weighted edges; Dijkstra's algorithm computes the lowest-effort path to the goal. Edge weights rise where this user struggles.
