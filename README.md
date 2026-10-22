@@ -81,7 +81,7 @@ node --check js/engine.js && node --check js/app.js
 CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 
 ## Demo
-- **Demo video (v2, 2:20):** https://youtu.be/4bUqTW4MOoA — detection, recovery prediction, shortcut discovery, audit & undo, and the measured 8 → 2 press improvement.
+- **Demo video (final, 2:50):** https://youtu.be/J_oQSTQ5kQE — detection, movement profiles, live effort tally, recovery prediction, shortcut discovery, cross-session learning, guided navigation, audit & undo, and the measured 8 → 2 press improvement.
 - **Live prototype:** https://arya123-sudo.github.io/AccessFlow/ — a mobile-first Fire TV experience simulator (10-foot UI + tappable on-screen remote).
 - Task flow: Home → Settings → Accessibility → Subtitles → On, first unadapted, then adapted.
 - Full walkthrough for judges: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
