@@ -55,3 +55,11 @@ One day, ten build stages. Every stage is a real commit on `main`; nothing is ba
 - TV surface now reads as a streaming service: full ACCESSFLOW wordmark in Netflix red, photographic hero with Play / More Info pills, green match %, yellow kept only for the focus ring (visibility is the accessibility point).
 - All 15 movie posters are real themed photographs (Pexels, free license) shipped in the repo under assets/posters/ with a CREDITS.md — hero, rows, catalog and detail pages all use the photographic key art; the gradient-block posters are gone.
 - Presentation only, as before: graph 44 nodes / 206 edges, canonical flow re-verified (8 → 2 presses), 20/20 tests.
+
+## Post-v12 — pinned shortcut moves below Favorite Apps
+- The pinned Subtitles shortcut no longer takes the top of Home: it renders in its own "Your shortcut" row UNDER the Favorite Apps grid (Search / Movies / TV Shows / Apps / Settings keep their original positions, pinned or not — the baseline route through Home is byte-identical).
+- Focus behaviour unchanged: Home still opens on the approved shortcut, so the adapted run stays exactly 2 presses (OK opens Subtitles, OK turns it on) and discovery still reads "optimal drops from 6 presses to 2". Graph at load unchanged: 44 nodes / 206 edges; 20/20 tests; canonical flow re-verified headlessly (Task 1 = 8 presses / 1 reversal → Task 2 = 2 presses / 0 reversals).
+
+## v13 — Page stripped to the working model; Subtitles shortcut moved down
+- The demo page is now only the product: wordmark, TV, remote, live metrics, optimal path/Guide me, session log, results, adaptations. Removed: task cards, the demo-video recording script, the "How AccessFlow works" explainer, footer essay, taglines and all procedure microcopy (in-TV toasts now speak like a real TV).
+- The pinned Subtitles shortcut now renders in its own "Your shortcut" row BELOW the Favorite Apps row (Search/Movies stay up top); Favorite Apps tile positions never shift when a pin appears. Adapted run verified still exactly 2 presses; results still 8 → 2 presses, 1 → 0 reversals; graph 44 nodes / 206 edges.

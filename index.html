@@ -12,21 +12,7 @@
     <div class="wrap">
 
       <div class="topbar">
-        <div class="brand">
-          <div class="wordmark">Access<span>Flow</span></div>
-          <div class="brandtag">Ability-Aware Smart TV Navigation</div>
-        </div>
-        <div class="tag">Fire TV experience prototype · Amazon Build, Ship, Shape Hackathon</div>
-        <div class="spacer"></div>
-        <button class="btn small" id="restartBtn" type="button">Restart demo</button>
-      </div>
-
-      <!-- TASK CARD -->
-      <div class="taskcard" id="taskCard">
-        <div class="kicker" id="taskKicker">Task 1 of 2 · Baseline run</div>
-        <h2 id="taskTitle">Turn on Subtitles</h2>
-        <p id="taskDesc">Use the remote below to navigate the TV: Home → Settings → Accessibility → Subtitles → switch On. AccessFlow is watching how the journey feels — every press is measured.</p>
-        <div class="route" id="taskRoute"></div>
+        <div class="wordmark">Access<span>Flow</span></div>
       </div>
 
       <div class="demo-grid">
@@ -87,7 +73,7 @@
 
           <!-- REMOTE -->
           <div class="remote">
-            <h3>Remote — tap, or use your keyboard</h3>
+            <h3>Remote</h3>
             <div class="dpad">
               <span class="rbtn blank"></span>
               <button class="rbtn" id="btnUp" type="button" aria-label="Up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l7-7 7 7"/></svg></button>
@@ -103,7 +89,6 @@
               <button class="rbtn" id="btnBack" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Back</button>
               <button class="rbtn" id="btnHome" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Home</button>
             </div>
-            <p class="kbd-hint">Keyboard: Arrow keys move · Enter = OK · Backspace = Back · H = Home</p>
           </div>
         </div>
 
@@ -138,7 +123,7 @@
 
           <div class="panel">
             <h3>Optimal path from here <span class="sub">— Dijkstra over the live graph</span></h3>
-            <div id="pathBox"><span class="empty-note">Start the task to see the computed route.</span></div>
+            <div id="pathBox"><span class="empty-note">Computing route…</span></div>
             <div class="effort" id="effortLine"></div>
             <div class="guide-ctl">
               <button class="btn primary small" id="guideBtn" type="button">Guide me</button>
@@ -152,9 +137,9 @@
           </div>
 
           <div class="panel">
-            <h3>Detection log <span class="sub">— difficulty signals, live</span></h3>
+            <h3>Session log <span class="sub">— live engine events</span></h3>
             <ul class="log" id="eventLog">
-              <li><span class="t">0:00</span><span>AccessFlow is listening. Your first press starts the run timer.</span></li>
+              <li><span class="t">0:00</span><span>AccessFlow is listening.</span></li>
             </ul>
           </div>
         </aside>
@@ -164,7 +149,7 @@
       <section class="block panel" id="resultsPanel" style="margin-top:14px;">
         <h3 style="font-size:17px;">Before / after — your measured runs</h3>
         <div id="resultsBody">
-          <p class="empty-note">Run 1 (baseline) and Run 2 (adapted) will appear here once you complete them. Every number comes from your own presses in this session — nothing is pre-filled.</p>
+          <p class="empty-note">No measured runs yet.</p>
         </div>
       </section>
 
@@ -172,36 +157,10 @@
       <section class="block panel" id="adaptPanel" style="margin-top:14px;">
         <h3 style="font-size:17px;">Adaptations <span class="sub" style="color:var(--faint);font-weight:500;font-size:12.5px;">— history, evidence &amp; undo</span></h3>
         <div id="adaptList">
-          <p class="empty-note">No adaptations yet. Every suggestion, approval, dismissal and undo is recorded here — your audit trail.</p>
+          <p class="empty-note">No adaptations yet.</p>
         </div>
       </section>
 
-      <!-- HOW IT WORKS -->
-      <section class="block">
-        <h3>How AccessFlow works</h3>
-        <div class="steps">
-          <div class="step"><div class="num">1</div><h4>Detect</h4><p>Every remote press is logged with a timestamp. Overshoots, direction reversals, backtracks, wrong selections and long hesitations are flagged as difficulty signals.</p></div>
-          <div class="step"><div class="num">2</div><h4>Optimize</h4><p>The TV interface is a weighted graph — every (screen, focused tile) is a node, every press an edge. Edge costs combine a Fitts's-law movement cost (distance ÷ target size) with your personal error rate; Dijkstra recomputes the cheapest route to your goal.</p></div>
-          <div class="step"><div class="num">3</div><h4>Discover &amp; suggest</h4><p>AccessFlow ranks destinations by visits × excess cost from your own measured runs and proposes pinning a shortcut to the winner — nothing is pre-chosen. Recovery uses prefix-based goal prediction over the same graph. No LLM; it's counting and graph math, labelled as such.</p></div>
-          <div class="step"><div class="num">4</div><h4>You approve</h4><p>Nothing ever changes silently. Each adaptation is explained with its evidence and applied only when you tap Approve.</p></div>
-          <div class="step"><div class="num">5</div><h4>Adapt &amp; undo</h4><p>Applied adaptations are listed with their evidence in the audit panel above — and every one can be undone, reverting the interface and the graph.</p></div>
-        </div>
-      </section>
-
-      <!-- DEMO SCRIPT -->
-      <section class="block panel">
-        <h3 style="font-size:17px;">Recording your demo video (under 3 minutes)</h3>
-        <ol class="script-list">
-          <li><b>0:00 – 0:25 · The hook.</b> Show the TV home and the task card: turning on subtitles the standard way takes eight presses — and for viewers with motor impairments, that's where the story ends.</li>
-          <li><b>0:25 – 1:10 · Run 1.</b> Do Task 1 with the remote. Deliberately overshoot a tile or two — the detection log and metrics react live; the optimal path updates as you move.</li>
-          <li><b>1:10 – 1:50 · The adaptation.</b> When AccessFlow suggests the shortcut, read its reasoning, tap Approve, then run Task 2 and land on the before/after table.</li>
-          <li><b>1:50 – 2:40 · Recovery + close.</b> Try bonus Task 3 (play <i>River Run</i>), trigger the recovery card by backing up a few times, and close on the measured result — the same task in two presses, adapted only with the user's approval.</li>
-        </ol>
-      </section>
-
-      <footer>
-        AccessFlow is a Fire TV experience prototype built for the Amazon Build, Ship, Shape Developer Hackathon (Fire TV track). The TV shell is a simulator — but the weighted-graph engine, Dijkstra path-finding, difficulty detection, adaptation logic and all metrics on this page are real, computed live from your interaction. Your learning data (run statistics, learned weights, movement profile) is stored only in this browser on this device and accumulates across visits; adaptations are approved per session and never silently restored. Clear the stored learning any time with <b>Reset learning</b> in the Live metrics panel.
-      </footer>
     </div>
 
 <script src="js/engine.js"></script>
