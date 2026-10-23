@@ -44,7 +44,7 @@ function screenTitle(sid){ return getScreens()[sid].title; }
 function renderPath(){
   const box = $('pathBox'), effort = $('effortLine');
   const tgt = currentTarget();
-  if(!tgt){ box.innerHTML = '<span class="empty-note">No active task — the engine idles.</span>'; effort.textContent=''; $('mOpt').textContent='–'; return; }
+  if(!tgt){ box.innerHTML = '<span class="empty-note">No active goal — the engine idles.</span>'; effort.textContent=''; $('mOpt').textContent='–'; return; }
   const cur = nodeKey();
   const res = dijkstra(cur, tgt.node, false);
   const wres = dijkstra(cur, tgt.node, true);
@@ -348,7 +348,7 @@ function renderAdaptations(){
   const body = $('adaptList');
   if(!body) return;
   if(!state.adaptations.length){
-    body.innerHTML = '<p class="empty-note">No adaptations yet. Every suggestion, approval, dismissal and undo is recorded here \u2014 your audit trail.</p>';
+    body.innerHTML = '<p class="empty-note">No adaptations yet.</p>';
     return;
   }
   body.innerHTML = state.adaptations.slice().reverse().map(a=>{
@@ -459,7 +459,7 @@ function applyAdaptations(fromComplete){
 /* ---------------- recovery ---------------- */
 function maybeRecover(type){
   if(!run || !run.active) return;
-  if(state.phase!=='task1' && state.phase!=='task2' && state.phase!=='task3') return;
+  if(state.phase!=='task1' && state.phase!=='task2') return;
   if(performance.now() < state.recoverCooldownUntil) return;
   if($('recoverCard').classList.contains('show')) return;
   if(run.backtracks >= 3 || run.reversals >= 3){
@@ -635,20 +635,13 @@ function renderGuide(){
   btn.hidden = !currentTarget();   // offered only while a task/goal is active
 }
 
-/* ---------------- task flow ---------------- */
-function setTaskCard(kicker, title, desc, routeHTML, done){
-  $('taskKicker').textContent = kicker;
-  $('taskTitle').textContent = title;
-  $('taskDesc').textContent = desc;
-  $('taskRoute').innerHTML = routeHTML || '';
-  $('taskCard').classList.toggle('done', !!done);
-}
-function routeLine(){
-  const n = optimalFromHome();
-  return 'Fastest route from Home right now: <b>' + n + ' presses</b> — Home → Settings → Accessibility → Subtitles → On';
-}
+/* ---------------- run flow ----------------
+   There are no on-page task instructions: the engine simply watches
+   what the user does. The first measured run targets Subtitles
+   (engine currentTarget); completing it triggers discovery and the
+   approval flow, and approval starts the second, adapted run. */
 function startTask2(){
-  guide = null;   // a guide belongs to its run — Task 2 starts unguided
+  guide = null;   // a guide belongs to its run — the second run starts unguided
   state.settings.subtitles = false;
   state.navStack = [];
   state.screen = 'home'; state.focusId = defaultFocus('home');
@@ -657,29 +650,7 @@ function startTask2(){
   run.optStart = optimalFromHomeFor('subtitles:sub_toggle');
   hideRecover();
   const adapted = state.decision==='approved';
-  setTaskCard(
-    adapted ? 'Task 2 of 2 · Adapted run' : 'Task 2 of 2 · Standard layout (adaptation not applied)',
-    'Turn on Subtitles — again',
-    adapted
-      ? 'Same task, adapted interface. Subtitles were reset to Off. Use your new Home shortcut and feel the difference — this run is measured against Run 1.'
-      : 'Same task on the standard layout. Subtitles were reset to Off. This run is measured against Run 1.',
-    routeLine());
-  logEvent('Task 2 started — subtitles reset to Off. ' + (adapted ? 'Adaptations are live.' : 'No adaptations applied.'), 'guide');
-  updateAll();
-}
-function startTask3(){
-  guide = null;   // a guide belongs to its run — Task 3 starts unguided
-  state.navStack = [];
-  state.screen = 'home'; state.focusId = defaultFocus('home');
-  state.phase = 'task3';
-  run = freshRun('task3');
-  run.optStart = optimalFromHomeFor('detail:play');
-  hideRecover();
-  const n = dijkstra('home:' + defaultFocus('home'), 'detail:play', false).dist + 1;
-  setTaskCard('Bonus task', 'Play the movie “River Run”',
-    'Home → Movies → River Run → Play. AccessFlow keeps detecting and guiding, exactly as before.',
-    'Fastest route from Home: <b>' + n + ' presses</b> — Home → Movies → River Run → Play');
-  logEvent('Task 3 started — play River Run.', 'guide');
+  logEvent('Second run started — subtitles reset to Off. ' + (adapted ? 'Adaptations are live.' : 'No adaptations applied.'), 'guide');
   updateAll();
 }
 function completeTask(){
@@ -693,10 +664,7 @@ function completeTask(){
   if(state.phase==='task1'){
     results.run1 = rec;
     state.phase = 'adapt';
-    logEvent('Task 1 complete — ' + rec.presses + ' presses, ' + rec.errors + ' errors, ' + rec.time.toFixed(1) + 's.', 'good');
-    setTaskCard('Task 1 complete · Run 1 measured', 'Subtitles are on',
-      'Your baseline is recorded below. Now decide whether AccessFlow may adapt the interface before the re-run.',
-      routeLine(), true);
+    logEvent('First run complete — ' + rec.presses + ' presses, ' + rec.errors + ' errors, ' + rec.time.toFixed(1) + 's.', 'good');
     renderResults();
     if(!state.suggestionShown) showSuggestion('complete');
     else if(state.decision==='approved') startTask2();
@@ -705,21 +673,9 @@ function completeTask(){
   else if(state.phase==='task2'){
     results.run2 = rec;
     state.phase = 'results';
-    logEvent('Task 2 complete — ' + rec.presses + ' presses, ' + rec.errors + ' errors, ' + rec.time.toFixed(1) + 's. Compare both runs below.', 'good');
-    setTaskCard('Both runs complete', 'See the difference you made',
-      'The before/after table below is built entirely from your two measured runs.',
-      '<button class="btn primary small" id="startTask3Btn" type="button">Start bonus Task 3 · Play “River Run”</button>', true);
+    logEvent('Second run complete — ' + rec.presses + ' presses, ' + rec.errors + ' errors, ' + rec.time.toFixed(1) + 's. Both runs are in the results panel.', 'good');
     renderResults();
-    $('startTask3Btn').addEventListener('click', startTask3);
     $('resultsPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
-  }
-  else if(state.phase==='task3'){
-    state.phase = 'done';
-    logEvent('Task 3 complete — River Run is playing. All demo tasks done.', 'good');
-    setTaskCard('All tasks complete', 'That is the full AccessFlow loop',
-      'Detection, graph optimization, your approval, adaptation — all measured. Explore the TV freely, or restart the demo from the top.',
-      '', true);
-    toast('Now playing: River Run');
   }
   updateAll();
 }
@@ -736,7 +692,7 @@ function renderResults(){
   const body = $('resultsBody');
   const r1 = results.run1, r2 = results.run2;
   if(!r1){
-    body.innerHTML = '<p class="empty-note">Run 1 (baseline) and Run 2 (adapted) will appear here once you complete them. Every number comes from your own presses in this session — nothing is pre-filled.</p>';
+    body.innerHTML = '<p class="empty-note">No measured runs yet.</p>';
     return;
   }
   const row = (label, v1, v2, fmtFn)=>{
@@ -762,7 +718,7 @@ function renderResults(){
       '<div class="bar-row"><span>Time · Run 2</span><div class="bar-track"><div class="bar-fill run2" style="width:' + Math.round(r2.time/maxT*100) + '%"></div></div><span class="v">' + r2.time.toFixed(1) + 's</span></div>' +
       '</div>';
   } else {
-    html += '<p class="empty-note" style="margin-top:10px;">Run 2 has not happened yet — approve (or decline) the adaptation and repeat the task to fill this in.</p>';
+    html += '<p class="empty-note" style="margin-top:10px;">Second run pending.</p>';
   }
   body.innerHTML = html;
 }
@@ -830,7 +786,6 @@ $('recoverDismiss').addEventListener('click', ()=>{
   state.recoverCooldownUntil = performance.now() + 25000;
   logEvent('Recovery dismissed — you kept control. It can return if the struggle continues.', 'guide');
 });
-$('restartBtn').addEventListener('click', ()=>location.reload());
 $('guideBtn').addEventListener('click', startGuide);
 $('guideStopBtn').addEventListener('click', ()=>{ endGuide(); updateAll(); });
 
@@ -908,7 +863,4 @@ if(state.sessionCount > 1){
            (Object.keys(state.weights).length ? ', ' + Object.keys(state.weights).length + ' learned edge weight' + (Object.keys(state.weights).length>1?'s':'') : '') +
            '. Adaptations are not restored \u2014 each one is approved per session.', 'guide');
 }
-setTaskCard('Task 1 of 2 · Baseline run', 'Turn on Subtitles',
-  'Use the remote below to navigate the TV: Home → Settings → Accessibility → Subtitles → switch On. AccessFlow is watching how the journey feels — every press is measured.',
-  routeLine());
 updateAll();

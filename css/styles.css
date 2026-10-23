@@ -29,8 +29,6 @@
       /* Netflix-style wordmark: the whole name in Netflix red,
          heavier and tighter letterforms, no white/red split. */
       .wordmark{ font-size:26px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; line-height:1.1; color:var(--red); }
-      .brandtag{ font-size:12.5px; color:var(--muted); letter-spacing:.04em; margin-top:2px; }
-      .tag{ font-size:12.5px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:4px 10px; background:var(--panel); }
       .topbar .spacer{ flex:1; }
       .btn{
         appearance:none; border:1px solid var(--line); background:var(--panel2); color:var(--ink);
@@ -41,19 +39,6 @@
       .btn.primary{ background:var(--red); border-color:var(--red); color:#fff; }
       .btn.ghost{ background:transparent; }
       .btn.small{ min-height:38px; padding:6px 12px; font-size:13px; }
-
-      /* ---------- task card ---------- */
-      .taskcard{
-        background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--red);
-        border-radius:var(--radius); padding:14px 16px; margin-bottom:14px;
-      }
-      .taskcard .kicker{ font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--red); }
-      .taskcard h2{ margin:4px 0 4px; font-size:21px; line-height:1.2; }
-      .taskcard p{ margin:0; color:var(--muted); font-size:14.5px; }
-      .taskcard .route{ margin-top:8px; font-size:13.5px; color:var(--ink); }
-      .taskcard .route b{ color:var(--yellow); font-weight:700; }
-      .taskcard.done{ border-left-color:var(--green); }
-      .taskcard.done .kicker{ color:var(--green); }
 
       /* ---------- demo layout ---------- */
       .demo-grid{ display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
@@ -154,6 +139,8 @@
 
       /* ---------- Favorite Apps (Home section label + app tiles) ---------- */
       .fav-label{ font-size:13.5px; font-weight:700; color:#fff; margin:2px 0 8px; position:relative; z-index:2; }
+      /* "Your shortcut" row — pinned shortcuts sit UNDER Favorite Apps */
+      .fav-label.shortcut-label{ margin-top:14px; }
       .tiles.home-apps .tile{
         align-items:center; text-align:center; justify-content:center;
         background:rgba(19,19,24,.92);
@@ -405,7 +392,6 @@
       .remote-row{ display:flex; gap:10px; justify-content:center; }
       .remote-row .rbtn{ padding:0 22px; border-radius:99px; font-size:15px; gap:8px; }
       .remote-row .rbtn svg{ width:20px; height:20px; }
-      .kbd-hint{ text-align:center; color:var(--faint); font-size:12.5px; margin:10px 0 0; }
 
       /* ---------- metrics / log ---------- */
       .stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
@@ -476,21 +462,6 @@
       .atag.undone{ background:#3a2a10; color:#ffcf87; }
       .atag.dismissed{ background:#26262e; color:#a3a3ab; }
 
-      /* ---------- explainer ---------- */
-      .steps{ display:grid; gap:10px; }
-      @media (min-width:760px){ .steps{ grid-template-columns:repeat(5,1fr); } }
-      .step{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; }
-      .step .num{ width:30px; height:30px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
-      .step h4{ margin:0 0 5px; font-size:15.5px; }
-      .step p{ margin:0; font-size:13.5px; color:var(--muted); }
-      .cols{ display:grid; gap:14px; }
-      @media (min-width:760px){ .cols{ grid-template-columns:1fr 1fr; } }
-      .prose p{ color:#d6d6da; font-size:15px; margin:0 0 10px; }
-      .prose h3{ margin:0 0 8px; }
-      .script-list{ margin:0; padding-left:20px; color:#d6d6da; font-size:14.5px; }
-      .script-list li{ margin:6px 0; }
-      .script-list b{ color:var(--red); }
-      footer{ color:var(--faint); font-size:13px; border-top:1px solid var(--line); padding-top:14px; margin-top:6px; }
       section.block{ margin-top:22px; }
       section.block > h3{ font-size:19px; margin:0 0 12px; }
 

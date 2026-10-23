@@ -118,16 +118,11 @@ function destinationById(id){ return DESTINATIONS.find(d=>d.id===id) || null; }
 
 function homeItems(){
   const items = [];
-  let y = 0;
-  if(state.adapted.pins.length){
-    state.adapted.pins.forEach((destId, i)=>{
-      const dest = destinationById(destId);
-      if(dest) items.push(Object.assign(dest.tile(), {x:i%3, y:Math.floor(i/3)}));
-    });
-    y = Math.ceil(state.adapted.pins.length / 3);
-  }
+  /* Favorite Apps rows — they come FIRST and their coordinates never
+     move, pin or no pin, so the baseline routes through Home (and the
+     measured Task 1 run) are identical before and after adaptation. */
   const rowA = [
-    {id:'search', label:'Search',   icon:'search', action:{type:'noop', msg:'Search is decorative in this prototype — the route that matters today is Settings.'}},
+    {id:'search', label:'Search',   icon:'search', action:{type:'noop', msg:'Search is not available on this TV.'}},
     {id:'movies', label:'Movies',   icon:'film',   action:{type:'nav', to:'movies'}},
     {id:'shows',  label:'TV Shows', icon:'tv',     action:{type:'nav', to:'shows'}}
   ];
@@ -135,8 +130,18 @@ function homeItems(){
     {id:'apps',     label:'Apps',     icon:'apps', action:{type:'nav', to:'apps'}},
     {id:'settings', label:'Settings', icon:'gear', action:{type:'nav', to:'settings'}}
   ];
-  rowA.forEach((it,i)=>items.push(Object.assign({}, it, {x:i, y:y})));
-  rowB.forEach((it,i)=>items.push(Object.assign({}, it, {x:i, y:y+1})));
+  rowA.forEach((it,i)=>items.push(Object.assign({}, it, {x:i, y:0})));
+  rowB.forEach((it,i)=>items.push(Object.assign({}, it, {x:i, y:1})));
+  /* Pinned shortcuts live in their OWN row UNDER the Favorite Apps
+     grid (rendered below it as "Your shortcut"), first tile in the
+     first column, directly under Apps — a pin extends Home downward
+     instead of pushing the app rows off the top. Home's initial focus
+     still lands on the first approved shortcut (see defaultFocus),
+     which is what keeps the adapted run at 2 presses. */
+  state.adapted.pins.forEach((destId, i)=>{
+    const dest = destinationById(destId);
+    if(dest) items.push(Object.assign(dest.tile(), {x:i%3, y:2 + Math.floor(i/3)}));
+  });
   return items;
 }
 
@@ -156,10 +161,10 @@ function getScreens(){
               action:{type:'openDetail', movie:m, kind:'Series'}})) },
     apps:{ title:'Apps', layout:'grid', cols:2, hint:'Your installed apps.',
       items: [
-        {id:'streambox', label:'StreamBox',  sub:'Streaming', icon:'play',  x:0, y:0, action:{type:'noop', msg:'StreamBox is not part of this demo — press Back to keep exploring.'}},
-        {id:'wavetunes', label:'WaveTunes',  sub:'Music',     icon:'music', x:1, y:0, action:{type:'noop', msg:'WaveTunes is not part of this demo — press Back to keep exploring.'}},
-        {id:'photowall', label:'PhotoWall',  sub:'Photos',    icon:'photo', x:0, y:1, action:{type:'noop', msg:'PhotoWall is not part of this demo — press Back to keep exploring.'}},
-        {id:'appstore',  label:'App Store',  sub:'Get more apps', icon:'store', x:1, y:1, action:{type:'noop', msg:'The App Store is not part of this demo — press Back to keep exploring.'}}
+        {id:'streambox', label:'StreamBox',  sub:'Streaming', icon:'play',  x:0, y:0, action:{type:'noop', msg:'StreamBox is not installed on this TV.'}},
+        {id:'wavetunes', label:'WaveTunes',  sub:'Music',     icon:'music', x:1, y:0, action:{type:'noop', msg:'WaveTunes is not installed on this TV.'}},
+        {id:'photowall', label:'PhotoWall',  sub:'Photos',    icon:'photo', x:0, y:1, action:{type:'noop', msg:'PhotoWall is not installed on this TV.'}},
+        {id:'appstore',  label:'App Store',  sub:'Get more apps', icon:'store', x:1, y:1, action:{type:'noop', msg:'The App Store is not available on this TV.'}}
       ]},
     settings:{ title:'Settings', layout:'grid', cols:2, hint:'', items: [
         {id:'accessibility', label:'Accessibility', sub:'Subtitles, contrast, text', icon:'heart',   x:0, y:0, action:{type:'nav', to:'accessibility'}},
@@ -208,7 +213,19 @@ const ENTRY_ITEM = { movies:'movies', shows:'shows', apps:'apps', settings:'sett
                      accessibility:'accessibility', display:'display', audio:'audio',
                      network:'network', subtitles:'subtitles', player:'play' };
 
-function defaultFocus(screenId){ const d = getScreens()[screenId]; return d.items[0].id; }
+function defaultFocus(screenId){
+  const d = getScreens()[screenId];
+  /* Home opens on the user's first approved shortcut when one is
+     pinned. The shortcut TILE sits in the "Your shortcut" row below
+     the Favorite Apps grid, but initial focus is a separate concern:
+     landing on the pin the user approved is what keeps the adapted
+     route at one Select to the destination (+ the final press). */
+  if(screenId==='home' && state.adapted.pins.length){
+    const pin = d.items.find(i=>i.shortcut);
+    if(pin) return pin.id;
+  }
+  return d.items[0].id;
+}
 function currentDef(){ return getScreens()[state.screen]; }
 function currentItem(){ return currentDef().items.find(i=>i.id===state.focusId) || currentDef().items[0]; }
 function nodeKey(screen, item){ return (screen||state.screen) + ':' + (item||state.focusId); }
@@ -937,11 +954,30 @@ function renderTV(){
     if(state.screen==='home') html += heroHTML();
     else html += '<h2 class="tv-title">' + def.title + '</h2>';
     if(def.hint) html += '<p class="tv-hint">' + def.hint + '</p>';
-    if(state.screen==='home') html += '<div class="fav-label" aria-hidden="true">Favorite Apps</div>';
-    html += '<div class="tiles cols' + def.cols + (state.screen==='home' ? ' home-apps' : '') + '">';
-    for(const it of def.items)
-      html += '<div class="tile' + (it.id===state.focusId?' focused':'') + (it.shortcut?' shortcut':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
-    html += '</div>';
+    const tileHTML = it => '<div class="tile' + (it.id===state.focusId?' focused':'') + (it.shortcut?' shortcut':'') + '" data-id="' + it.id + '">' + itemInner(it) + '</div>';
+    if(state.screen==='home'){
+      /* Home sections, top to bottom: hero, the Favorite Apps grid,
+         then — only when a shortcut is pinned — the "Your shortcut"
+         row UNDER the apps grid, then the decorative poster rows.
+         Shortcut tiles render in their own grid so the apps grid's
+         contents and positions never change when a pin appears. */
+      const apps = def.items.filter(it=>!it.shortcut);
+      const pins = def.items.filter(it=>it.shortcut);
+      html += '<div class="fav-label" aria-hidden="true">Favorite Apps</div>';
+      html += '<div class="tiles cols' + def.cols + ' home-apps">';
+      for(const it of apps) html += tileHTML(it);
+      html += '</div>';
+      if(pins.length){
+        html += '<div class="fav-label shortcut-label" aria-hidden="true">Your shortcut</div>';
+        html += '<div class="tiles cols' + def.cols + ' home-apps home-shortcuts">';
+        for(const it of pins) html += tileHTML(it);
+        html += '</div>';
+      }
+    } else {
+      html += '<div class="tiles cols' + def.cols + '">';
+      for(const it of def.items) html += tileHTML(it);
+      html += '</div>';
+    }
     if(def.credit) html += '<p class="tv-hint" style="margin:10px 0 0;">' + def.credit + '</p>';
     if(state.screen==='home') html += homeRowsHTML();
   } else if(def.layout==='list'){
