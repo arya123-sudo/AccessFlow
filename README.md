@@ -37,20 +37,8 @@ Real captures from actual runs of the prototype (see `docs/DEMO_GUIDE.md` for th
 **Movies — Shivaprasad's six-title catalog, live in the shipped demo**
 ![Movies catalog](screenshots/movies-catalog.png)
 
-**Fire TV Home — baseline navigation**
-![Home](screenshots/home.png)
-
-**Task 1 done — difficulty detected and logged live (overshoots, reversals, presses vs optimal)**
-![Detection log](screenshots/detection-log.png)
-
-**AccessFlow proposes an adaptation — with its evidence, and only the user can approve it**
-![Adaptation suggestion](screenshots/adaptation-suggestion.png)
-
-**Home after approval — the Subtitles shortcut is pinned**
-![Home adapted](screenshots/home-adapted.png)
-
-**Measured results — baseline vs adapted run, computed from the actual runs**
-![Results](screenshots/results.png)
+**Home after approval — the Subtitles shortcut sits in its own row below Favorite Apps**
+![Home with the Subtitles shortcut row](screenshots/home-shortcut-row.png)
 
 ## How it works
 1. **Detect** — every remote press is logged; overshoots, backtracks, wrong selects, reversals, and hesitations are classified live.
@@ -92,11 +80,12 @@ CI (GitHub Actions, workflow `ci`) runs the same checks on every push.
 ## Demo
 - **Demo video (final, 2:50):** https://youtu.be/J_oQSTQ5kQE — detection, movement profiles, live effort tally, recovery prediction, shortcut discovery, cross-session learning, guided navigation, audit & undo, and the measured 8 → 2 press improvement.
 - **Live prototype:** https://arya123-sudo.github.io/AccessFlow/ — a mobile-first Fire TV experience simulator (10-foot UI + tappable on-screen remote).
+- **Devpost submission:** https://devpost.com/software/accessflow-adaptive-navigation-for-fire-tv-accessibility
 - Task flow: Home → Settings → Accessibility → Subtitles → On, first unadapted, then adapted.
 - Full walkthrough for judges: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
 
 ## Repository layout — two builds, one project
-- **Shipped build (this demo + video):** the web engine at the repo root (`index.html`, `css/`, `js/`) and the Fire TV app in `fire-tv/` (package `com.arya.accessflow`, with prebuilt APK).
+- **Shipped build (this demo + video):** the web engine at the repo root (`index.html`, `css/`, `js/`) and the Fire TV app in `fire-tv/` (package `com.arya.accessflow`; a debug APK is built from this source with the current web build bundled as its assets — see `docs/INSTALL_FIRE_TV.md`).
 - **React Native scaffold:** `android/`, `ios/` and `.bundle/` hold the platform folders from teammate Shivaprasad's parallel RN prototype (package `com.accessflowapp`), imported so the combined team project lives in one repo. The concepts adopted from it (movement profiles, guided navigation, path-effort tally) are implemented in the shipped web engine, and his six-title movie catalog now appears as real tiles in the demo's Movies screen; his full RN project (all 57 files, including `App.tsx`, `src/navigation/` and his test) is imported in this repo, with his README preserved as `RN_PROTOTYPE_README.md`; his repo remains at https://github.com/shivaprasad938/accessflowai.
 
 ## Fire TV app
