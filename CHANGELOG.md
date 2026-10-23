@@ -63,3 +63,6 @@ One day, ten build stages. Every stage is a real commit on `main`; nothing is ba
 ## v13 — Page stripped to the working model; Subtitles shortcut moved down
 - The demo page is now only the product: wordmark, TV, remote, live metrics, optimal path/Guide me, session log, results, adaptations. Removed: task cards, the demo-video recording script, the "How AccessFlow works" explainer, footer essay, taglines and all procedure microcopy (in-TV toasts now speak like a real TV).
 - The pinned Subtitles shortcut now renders in its own "Your shortcut" row BELOW the Favorite Apps row (Search/Movies stay up top); Favorite Apps tile positions never shift when a pin appears. Adapted run verified still exactly 2 presses; results still 8 → 2 presses, 1 → 0 reversals; graph 44 nodes / 206 edges.
+
+## v14 — Demo video v4
+- New demo video filmed entirely on the v13 build (Netflix-style UI, photographic posters, clean working-model page, Subtitles shortcut in its row below the apps): https://youtu.be/CSZ3Wbp67YM (2:52). Supersedes v3, which showed the pre-v13 page.
